@@ -1,16 +1,11 @@
-from flask import Flask, render_template
-from api.routes import api_bp
+# src/app.py
+from flask import Flask, request, jsonify
+from api.routes import api_routes
 
 app = Flask(__name__)
-app.register_blueprint(api_bp, url_prefix='/api')
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+# Register the API routes
+app.register_blueprint(api_routes)
 
-@app.route('/results')
-def results():
-    return render_template('results.html')
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)

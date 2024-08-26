@@ -1,33 +1,39 @@
+# src/api/routes.py
 from flask import Blueprint, request, jsonify
-import pickle
-import numpy as np
-import pandas as pd
-from sklearn.preprocessing import StandardScaler
+from src.utils import load_model, preprocess_input
 
-# Load the model and scaler
-model = pickle.load(open('../models/driving_behavior_model.pkl', 'rb'))
-scaler = pickle.load(open('../models/scaler.pkl', 'rb'))
+# Create a blueprint for the API routes
+api_routes = Blueprint('api_routes', __name__)
 
-api_bp = Blueprint('api_bp', __name__)
+# Load the model once at the start
+model = load_model()
 
-@api_bp.route('/predict', methods=['POST'])
-def predict_behavior():
-    data = request.json
-    # Assuming data contains 'avg_speed', 'max_acceleration', 'total_heading_change'
-    features = np.array([[data['avg_speed'], data['max_acceleration'], data['total_heading_change']]])
-    
-    # Scale features
-    scaled_features = scaler.transform(features)
-    
-    # Predict behavior
-    prediction = model.predict(scaled_features)
-    behavior_mapping = {0: 'Safe', 1: 'Moderate', 2: 'Average', 3: 'Aggressive'}
-    behavior = behavior_mapping[prediction[0]]
-    
-    return jsonify({'predicted_behavior': behavior})
-
-# Optional retraining endpoint
-@api_bp.route('/train', methods=['POST'])
-def retrain_model():
-    # Logic for retraining the model with new data
-    return jsonify({'message': 'Model retrained successfully!'})
+@api_routes.route('/predict', methods=['POST'])
+def predict():
+    """Endpoint to handle predictions based on user input."""
+    if request.method == 'POST':
+        try:
+            # Get data from the request
+            data = request.json
+            
+            # Preprocess the input
+            preprocessed_data = preprocess_input(data)
+            
+            # Make prediction
+            prediction = model.predict(preprocessed_data)
+            
+            # Map numeric predictions back to behavior categories
+            behavior_mapping = {0: 'Safe', 1: 'Moderate', 2: 'Average', 3: 'Aggressive'}
+            predicted_behavior = behavior_mapping[prediction[0]]
+            
+            # Return the prediction result as JSON
+            return jsonify({
+                'status': 'success',
+                'predicted_behavior': predicted_behavior
+            }), 200
+        
+        except Exception as e:
+            return jsonify({
+                'status': 'error',
+                'message': str(e)
+            }), 400

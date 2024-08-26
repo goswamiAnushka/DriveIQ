@@ -1,10 +1,8 @@
 # src/app.py
-from flask import Flask, request, jsonify
+from flask import Flask
 from api.routes import api_routes
 
 app = Flask(__name__)
-
-# Register the API routes
 app.register_blueprint(api_routes)
 
 if __name__ == "__main__":

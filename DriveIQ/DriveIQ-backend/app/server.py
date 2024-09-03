@@ -1,18 +1,14 @@
-from flask import Flask, jsonify
-from api.routes import api
+import sys
+import os
 
-def create_app():
-    app = Flask(__name__)
+# Add the DriveIQ-backend directory to the Python path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-    # Register Blueprints
-    app.register_blueprint(api, url_prefix='/api')
+from api.routes import api_bp
+from flask import Flask
 
-    @app.route('/')
-    def home():
-        return jsonify({"message": "Welcome to the DriveIQ API!"}), 200
+app = Flask(__name__)
+app.register_blueprint(api_bp)
 
-    return app
-
-if __name__ == "__main__":
-    app = create_app()
+if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

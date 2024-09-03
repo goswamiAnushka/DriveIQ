@@ -1,19 +1,15 @@
-import joblib
+import pickle
+import numpy as np
 
-def load_model(model_path='ml_model/models/driving_behavior_model.pkl'):
-    """Load the pre-trained ML model."""
-    try:
-        model = joblib.load(model_path)
-        return model
-    except FileNotFoundError:
-        raise Exception("Model file not found. Ensure the model is trained and saved correctly.")
-    except Exception as e:
-        raise Exception(f"An error occurred while loading the model: {str(e)}")
+def load_model():
+    with open('DriveIQ-backend/models/driving_behavior_model.pkl', 'rb') as model_file:
+        model = pickle.load(model_file)
+    return model
 
-def predict_behavior(model, data):
-    """Predict driving behavior using the loaded ML model."""
-    try:
-        prediction = model.predict(data)
-        return prediction.tolist()
-    except Exception as e:
-        raise Exception(f"An error occurred during prediction: {str(e)}")
+def predict_driver_behavior(model, features):
+    # Convert features to numpy array for model prediction
+    features_array = features[['Speed(m/s)', 'Acceleration(m/s^2)', 'Heading_Change(degrees)', 'Jerk(m/s^3)']].values
+    prediction = model.predict(features_array)
+    score = np.mean(features['Driving_Score'])  # Calculate the mean driving score for the trip
+    behavior = features['Driving_Category'].mode()[0]  # Most frequent driving category for the trip
+    return {"behavior": behavior, "score": score}

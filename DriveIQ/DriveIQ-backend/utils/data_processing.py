@@ -63,7 +63,7 @@ def preprocess_gps_data(gps_data):
     # Fill NaN values with 0 (after diff operations)
     df = df.fillna(0)
 
-    # Calculate a continuous driving score with updated thresholds
+    
     def calculate_driving_score(row):
         # Adjusted thresholds for Indian driving conditions
         speed_score = min(max(row['Speed(m/s)'] / 11.11, 0), 1)  # Normalize to 0-1, with 11.11 m/s (~40 km/h) as safe speed
@@ -71,13 +71,13 @@ def preprocess_gps_data(gps_data):
         heading_score = min(max(abs(row['Heading_Change(degrees)']) / 60, 0), 1)  # Normalize to 0-1, with 60 degrees as significant change
         jerk_score = min(max(abs(row['Jerk(m/s^3)']) / 1.5, 0), 1)  # Normalize to 0-1, with 1.5 m/s^3 being significant jerk
 
-        # Combine the factors into a score (weighted sum)
+     
         score = (0.4 * speed_score + 0.3 * accel_score + 0.2 * heading_score + 0.1 * jerk_score) * 100
         return score
 
     df['Driving_Score'] = df.apply(calculate_driving_score, axis=1)
 
-    # Define thresholds for driving categories based on the driving score
+    
     def categorize_driving_score(score):
         if score < 30:
             return 'Safe'

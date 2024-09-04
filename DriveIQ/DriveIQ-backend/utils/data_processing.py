@@ -79,9 +79,9 @@ def preprocess_gps_data(gps_data):
 
     
     def categorize_driving_score(score):
-        if score < 30:
+        if score < 50:
             return 'Safe'
-        elif 30 <= score < 70:
+        elif 50 <= score < 70:
             return 'Moderate'
         else:
             return 'Aggressive'

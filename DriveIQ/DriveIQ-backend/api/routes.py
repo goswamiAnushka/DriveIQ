@@ -1,42 +1,49 @@
-from flask import request, jsonify
-from utils.data_processing import preprocess_gps_data
-from utils.ml_integration import load_model, predict_driver_behavior
-from utils.history_management import save_journey, get_journey_history
-from utils.suggestions import generate_suggestions
-from . import api_bp
+from flask import Blueprint, request, jsonify
+from utils.data_processing import process_gps_data
+from utils.ml_integration import predict_driver_behavior
+import numpy as np
+
+# Define the Blueprint
+api_bp = Blueprint('api', __name__)
 
 @api_bp.route('/start-journey', methods=['POST'])
 def start_journey():
-    return jsonify({"message": "Journey started, collecting GPS data."})
+    data = request.json
+    trip_id = 1  # Mock trip_id, replace with actual DB call
+    return jsonify({"message": "Journey started", "trip_id": trip_id}), 201
 
 @api_bp.route('/record-telematics', methods=['POST'])
 def record_telematics():
-    gps_data = request.json.get('gps_data')
+    gps_data = request.json.get('gps_data', [])
+
     if not gps_data:
         return jsonify({"error": "No GPS data provided"}), 400
+    
+    # Process the GPS data to calculate speed, acceleration, etc.
+    try:
+        processed_data = process_gps_data(gps_data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    # Preprocess GPS data to extract features
-    processed_data = preprocess_gps_data(gps_data)
-    
-    # Predict driving behavior and score
-    model = load_model()
-    prediction = predict_driver_behavior(model, processed_data)
-    
-    # Save journey history
-    save_journey(prediction)
-    
-    # Generate suggestions based on prediction
-    suggestions = generate_suggestions(prediction)
-    
-    response = {
-        "prediction": prediction,
-        "suggestions": suggestions
-    }
-    
-    return jsonify(response)
+    # Send processed data to the ML model for prediction
+    try:
+        score, category = predict_driver_behavior(processed_data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-@api_bp.route('/history', methods=['GET'])
-def history():
-    # Retrieve journey history
-    journey_history = get_journey_history()
-    return jsonify(journey_history)
+    # Ensure score is converted to Python int or float for JSON serialization
+    score = int(score) if isinstance(score, np.integer) else float(score)
+
+    return jsonify({
+        "driving_score": score,
+        "driving_category": category
+    }), 200
+
+@api_bp.route('/history/<int:user_id>', methods=['GET'])
+def get_history(user_id):
+    # Mock history data, replace with actual DB calls
+    mock_history = [
+        {"trip_id": 1, "driving_score": 85, "category": "Good"},
+        {"trip_id": 2, "driving_score": 72, "category": "Moderate"}
+    ]
+    return jsonify(mock_history), 200

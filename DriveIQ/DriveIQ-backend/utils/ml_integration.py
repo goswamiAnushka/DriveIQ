@@ -4,7 +4,7 @@ import pickle
 from sklearn.preprocessing import StandardScaler
 import pandas as pd
 
-# Corrected paths to the model and scaler files
+# Paths to the model and scaler files
 current_dir = os.path.dirname(os.path.abspath(__file__))
 model_path = os.path.join(current_dir, '../../ml_model/models/driving_data_model.pkl')
 scaler_path = os.path.join(current_dir, '../../ml_model/models/scaler.pkl')
@@ -25,6 +25,35 @@ if not os.path.exists(scaler_path):
 with open(scaler_path, 'rb') as scaler_file:
     scaler = pickle.load(scaler_file)
 
+# Function to categorize driving based on the score
+def categorize_driving_score(score):
+    if score >= 85:
+        return 'Safe'
+    elif score >= 60:
+        return 'Moderate'
+    else:
+        return 'Risky'
+
+# Function to calculate driving score from category probabilities
+def calculate_driving_score_from_probabilities(category_probabilities):
+    """
+    Calculate a weighted driving score from the category probabilities.
+    Category weights: Risky = 20, Moderate = 50, Safe = 100
+    """
+    weighted_scores = np.dot(category_probabilities, [20, 50, 100])
+    return np.mean(weighted_scores)
+
+# Function to calculate penalties for risky driving behavior
+def calculate_penalties(processed_data):
+    penalties = {
+        "speed_penalty": int(processed_data['Speed(m/s)'].mean() * 2),  # Example: multiply by a factor
+        "acceleration_penalty": int(processed_data['Acceleration(m/s^2)'].mean() * 5),
+        "heading_change_penalty": int(processed_data['Heading_Change(degrees)'].mean() * 3),
+        "sensitive_area_violation_penalty": int(processed_data['SASV'].sum() * 10),
+        "speed_violation_penalty": int(processed_data['Speed_Violation'].sum() * 15)
+    }
+    return penalties
+
 # Function to predict driving score and category using the trained model
 def predict_driver_behavior(processed_data):
     """
@@ -35,35 +64,31 @@ def predict_driver_behavior(processed_data):
     
     Returns:
     driving_score (int): The calculated driving score out of 100.
-    driving_category (str): The predicted driving category (e.g., Risky, Moderate, Good, Excellent).
+    driving_category (str): The predicted driving category (e.g., Risky, Moderate, Safe).
+    penalties (dict): Penalty breakdown if driving is risky.
     """
-    # Ensure the necessary features are available in the processed data
-    features = ['Speed(m/s)', 'Acceleration(m/s^2)', 'Heading_Change(degrees)', 'Jerk(m/s^3)', 'Braking_Intensity']
-    
-    # Convert processed_data to a DataFrame if it is a list
-    if isinstance(processed_data, list):
-        processed_data = pd.DataFrame(processed_data)
+    features = ['Speed(m/s)', 'Acceleration(m/s^2)', 'Heading_Change(degrees)', 'Jerk(m/s^3)', 'Braking_Intensity', 'SASV', 'Speed_Violation']
 
-    # Check if all required columns are in the DataFrame
     missing_features = [f for f in features if f not in processed_data.columns]
     if missing_features:
         raise ValueError(f"Missing required features for prediction: {', '.join(missing_features)}")
 
-    # Extract only the necessary features for prediction
+    # Extract necessary features
     processed_data = processed_data[features]
-
-    # Scale the features using the pre-trained scaler
     scaled_data = scaler.transform(processed_data)
 
-    # Predict category probabilities and the predicted class for each sample
+    # Predict category probabilities
     category_probabilities = model.predict_proba(scaled_data)
-    category_pred = model.predict(scaled_data)
 
-    # Map numeric category predictions to readable labels
-    category_mapping = {0: 'Risky', 1: 'Moderate', 2: 'Good', 3: 'Excellent'}
-    driving_category = category_mapping.get(np.argmax(np.bincount(category_pred)), 'Unknown')
+    # Calculate driving score
+    driving_score = calculate_driving_score_from_probabilities(category_probabilities)
 
-    # Calculate the weighted driving score out of 100
-    driving_score = np.mean([np.dot(probs, [20, 50, 75, 100]) for probs in category_probabilities])
+    # Categorize driving behavior
+    driving_category = categorize_driving_score(driving_score)
 
-    return int(driving_score), driving_category
+    # If the category is 'Risky', calculate penalties
+    if driving_category == 'Risky':
+        penalties = calculate_penalties(processed_data)
+        return int(driving_score), driving_category, penalties
+
+    return int(driving_score), driving_category, None

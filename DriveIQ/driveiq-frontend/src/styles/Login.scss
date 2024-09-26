@@ -1,0 +1,21 @@
+.login {
+  text-align: center;
+  padding: 50px;
+
+  h2 {
+    font-size: 24px;
+    margin-bottom: 20px;
+  }
+
+  input {
+    padding: 10px;
+    width: 200px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+
+  button {
+    width: 220px;
+  }
+}

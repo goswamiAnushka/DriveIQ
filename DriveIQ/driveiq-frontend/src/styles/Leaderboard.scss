@@ -1,0 +1,25 @@
+.leaderboard {
+    padding: 20px;
+    text-align: center;
+  
+    h2 {
+      color: #1565c0;
+    }
+  
+    table {
+      width: 100%;
+      border-collapse: collapse;
+  
+      th, td {
+        padding: 12px;
+        border: 1px solid #ddd;
+        text-align: left;
+      }
+  
+      th {
+        background-color: #1976d2;
+        color: white;
+      }
+    }
+  }
+  

@@ -30,3 +30,5 @@ class AggregatedData(db.Model):
     risk_level = db.Column(db.String(50))
     aggregated_factors = db.Column(db.Text)
     created_at = db.Column(db.DateTime, nullable=False)
+
+    driver = db.relationship('Driver', backref=db.backref('aggregated_data', lazy=True))

@@ -1,8 +1,8 @@
-# ml_integration.py
 import os
 import numpy as np
 import pickle
 import pandas as pd
+import logging
 
 # Paths to the trip-level and bulk-level model files and scalers
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -43,44 +43,58 @@ def calculate_driving_score_from_probabilities(category_probabilities):
 
 # Function to predict driving behavior for a single trip
 def predict_driver_behavior(processed_data):
+    if not isinstance(processed_data, pd.DataFrame):
+        raise ValueError("Input data must be a pandas DataFrame")
+
+    # Features required for the ML model
     features = ['Speed(m/s)', 'Acceleration(m/s^2)', 'Heading_Change(degrees)', 'Jerk(m/s^3)', 'Braking_Intensity', 'SASV', 'Speed_Violation']
 
-    if any(f not in processed_data.columns for f in features):
-        raise ValueError(f"Missing required features for prediction: {', '.join(features)}")
+    # Ensure all required columns are present
+    missing_features = [f for f in features if f not in processed_data.columns]
+    if missing_features:
+        raise ValueError(f"Missing required features for prediction: {', '.join(missing_features)}")
 
-    # Scale the data for trip-level prediction
+    # Scale the data and predict category probabilities
     processed_data_scaled = trip_scaler.transform(processed_data[features])
-
-    # Predict category probabilities using the trip-level model
     category_probabilities = trip_model.predict_proba(processed_data_scaled)
 
-    # Calculate the driving score
+    # Calculate driving score and category
     driving_score = calculate_driving_score_from_probabilities(category_probabilities)
-
-    # Categorize the driving behavior
     driving_category = categorize_driving_score(driving_score)
 
     return int(driving_score), driving_category
 
-# Function to predict consolidated driving score based on bulk data (aggregated from multiple trips)
 def predict_bulk_driver_behavior(bulk_features):
     feature_columns = [
         'Speed(m/s)_mean', 'Speed(m/s)_max', 'Speed(m/s)_std',
         'Acceleration(m/s^2)_mean', 'Acceleration(m/s^2)_max', 'Acceleration(m/s^2)_std',
-        'Heading_Change(degrees)_mean', 'Jerk(m/s^3)_mean',
-        'Braking_Intensity_mean', 'SASV_mean', 'Speed_Violation_mean', 'Total_Observations'
+        'Heading_Change(degrees)_mean', 'Heading_Change(degrees)_max', 'Heading_Change(degrees)_std',
+        'Jerk(m/s^3)_mean', 'Jerk(m/s^3)_max', 'Jerk(m/s^3)_std',
+        'Braking_Intensity_mean', 'Braking_Intensity_max', 'Braking_Intensity_std',
+        'SASV_total', 'Speed_Violation_total', 'Total_Observations'
     ]
 
+    # Print the features being passed for debugging
+    print("Features being passed for prediction:", bulk_features)
+
     # Ensure all required features are present
-    for feature in feature_columns:
-        if feature not in bulk_features:
-            raise ValueError(f"Missing required feature: {feature}")
+    missing_bulk_features = [feature for feature in feature_columns if feature not in bulk_features]
+    if missing_bulk_features:
+        raise ValueError(f"Missing required feature(s): {', '.join(missing_bulk_features)}")
 
     # Create DataFrame for bulk features and scale the data
     bulk_data = pd.DataFrame([bulk_features])
+    
+    # Print the DataFrame being scaled for debugging
+    print("Bulk data for prediction:", bulk_data)
+
     bulk_data_scaled = bulk_scaler.transform(bulk_data[feature_columns])
 
     # Predict category using the bulk-level model
     predicted_category = bulk_model.predict(bulk_data_scaled)
 
-    return categorize_driving_score(predicted_category[0])
+    # Log the prediction result
+    print("Predicted category:", predicted_category)
+
+    # Convert numpy int to standard int for JSON serialization
+    return categorize_driving_score(predicted_category[0]), int(predicted_category[0])  # Return both the category and score as standard int

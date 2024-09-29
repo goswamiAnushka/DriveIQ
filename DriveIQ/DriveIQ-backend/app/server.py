@@ -19,8 +19,10 @@ app = Flask(__name__)
 # Enable CORS to allow requests from your frontend (React) running on a different domain/port
 CORS(app)
 
-# Configure the SQLite database
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///driveiq.db'
+# Configure the SQLite database with the correct path
+basedir = os.path.abspath(os.path.dirname(__file__))  # This points to the app/ directory
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, '..', 'instance', 'driveiq.db')  # Goes up one level to DriveIQ-backend
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize SQLAlchemy and Migrate

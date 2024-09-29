@@ -21,7 +21,7 @@ def calculate_heading(lat1, lon1, lat2, lon2):
     initial_heading = atan2(x, y)
     return (degrees(initial_heading) + 360) % 360  # Normalize heading to [0, 360]
 
-# Fetch sensitive areas (schools, hospitals) from OpenStreetMap
+# Fetch sensitive areas (e.g., schools, hospitals)
 def fetch_sensitive_areas(lat, lon, radius=300):
     try:
         if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
@@ -31,79 +31,105 @@ def fetch_sensitive_areas(lat, lon, radius=300):
         sensitive_areas = ox.features_from_point((lat, lon), tags, dist=radius)
 
         if sensitive_areas.empty:
-            print(f"No sensitive areas found for location: ({lat}, {lon}) with radius {radius} meters.")
             return []
 
         sensitive_coords = sensitive_areas['geometry'].apply(lambda x: (x.centroid.y, x.centroid.x))
         return sensitive_coords.tolist()
     except Exception as e:
-        print(f"Error fetching sensitive areas: {str(e)}")
         return []
 
-# Calculate sensitive area speed violation (SASV)
 def calculate_sasv(lat, lon, speed, sensitive_locations):
     distances = [haversine(lat, lon, s_lat, s_lon) for s_lat, s_lon in sensitive_locations]
     if any(dist < 300 for dist in distances) and speed > 8.33:  # ~30 km/h speed limit in sensitive areas
         return 1
     return 0
 
-# Process GPS data and calculate metrics
 def process_gps_data(gps_data):
+    if not gps_data or len(gps_data) < 2:
+        raise ValueError("Insufficient GPS data")
+
     df = pd.DataFrame(gps_data)
-
-    if df.empty:
-        raise ValueError("GPS data is empty")
-
     required_columns = ['Latitude', 'Longitude', 'Time_Step']
+
+    # Check for required columns
     for col in required_columns:
         if col not in df.columns:
             raise ValueError(f"Missing required column: {col}")
 
-    # Convert necessary columns to numeric
     df['Latitude'] = pd.to_numeric(df['Latitude'], errors='coerce')
     df['Longitude'] = pd.to_numeric(df['Longitude'], errors='coerce')
     df['Time_Step'] = pd.to_numeric(df['Time_Step'], errors='coerce')
 
-    # Drop rows with missing or invalid values
+    # Drop any rows with missing values
     df.dropna(subset=['Latitude', 'Longitude', 'Time_Step'], inplace=True)
 
-    # Shift latitude and longitude for calculating distance and heading
+    # Ensure sufficient data remains after dropping rows with missing values
+    if len(df) < 2:
+        raise ValueError("Insufficient valid GPS data after cleaning")
+
+    # Calculate distance and speed
     df['Lat_Shifted'] = df['Latitude'].shift(1)
     df['Lon_Shifted'] = df['Longitude'].shift(1)
-
-    # Calculate distance between consecutive points
     df['Distance(m)'] = df.apply(lambda row: haversine(row['Lat_Shifted'], row['Lon_Shifted'], row['Latitude'], row['Longitude']), axis=1)
 
-    # Calculate time difference between consecutive points
+    # Calculate time difference, with a minimum of 1 second to avoid division by very small values
     df['Time_Diff(s)'] = df['Time_Step'].diff().fillna(1)
+    df['Time_Diff(s)'] = df['Time_Diff(s)'].apply(lambda x: max(x, 1))  # Set minimum time difference
 
-    # Calculate speed as distance/time
+    # Calculate speed (m/s)
     df['Speed(m/s)'] = df['Distance(m)'] / df['Time_Diff(s)']
+    
+    # Convert speed to km/h
+    df['Speed(km/h)'] = df['Speed(m/s)'] * 3.6
 
-    # Filter out invalid speed calculations
-    df.replace([np.inf, -np.inf], np.nan, inplace=True)
-    df.dropna(subset=['Speed(m/s)'], inplace=True)
+    # Print speeds for each GPS data point
+    for index, row in df.iterrows():
+        print(f"Time Step: {row['Time_Step']}, Speed: {row['Speed(km/h)']} km/h")
 
-    # Calculate acceleration
+    # Filter out rows where the speed is below 5 km/h (stationary or idle)
+    df = df[df['Speed(km/h)'] > 5]
+
+    if df.empty:
+        raise ValueError("No valid movement data after filtering low speeds")
+
+    # Calculate acceleration and jerk
     df['Acceleration(m/s^2)'] = df['Speed(m/s)'].diff() / df['Time_Diff(s)']
+    df['Jerk(m/s^3)'] = df['Acceleration(m/s^2)'].diff() / df['Time_Diff(s)']
 
-    # Calculate braking intensity
-    df['Braking_Intensity'] = df['Acceleration(m/s^2)'].apply(lambda x: abs(x) if x < 0 else 0)
-
-    # Calculate heading change between consecutive points
+    # Calculate heading change
     df['Heading'] = df.apply(lambda row: calculate_heading(row['Lat_Shifted'], row['Lon_Shifted'], row['Latitude'], row['Longitude']), axis=1)
     df['Heading_Change(degrees)'] = df['Heading'].diff().fillna(0)
 
-    # Calculate jerk (rate of change of acceleration)
-    df['Jerk(m/s^3)'] = df['Acceleration(m/s^2)'].diff() / df['Time_Diff(s)']
+    # Calculate braking intensity (negative acceleration)
+    df['Braking_Intensity'] = df['Acceleration(m/s^2)'].apply(lambda x: abs(x) if x < 0 else 0)
 
-    # Calculate sensitive area speed violations (SASV)
+    # Sensitive area speed violation
     df['SASV'] = df.apply(lambda row: calculate_sasv(row['Latitude'], row['Longitude'], row['Speed(m/s)'], fetch_sensitive_areas(row['Latitude'], row['Longitude'])), axis=1)
 
-    # Calculate speed violations (general speed limits)
-    def calculate_speed_violation(row):
-        return 1 if row['Speed(m/s)'] > 13.89 else 0  # 13.89 m/s (~50 km/h) general speed limit
-    df['Speed_Violation'] = df.apply(calculate_speed_violation, axis=1)
+    # Speed violation (above ~50 km/h)
+    df['Speed_Violation'] = df['Speed(km/h)'].apply(lambda x: 1 if x > 50 else 0)  # Speed limit: 50 km/h
 
-    # Return the processed data
-    return df
+    # Aggregate metrics
+    total_distance = df['Distance(m)'].sum()
+    avg_speed_mps = df['Speed(m/s)'].mean()
+    avg_speed_kmph = df['Speed(km/h)'].mean()
+    avg_acceleration = df['Acceleration(m/s^2)'].mean()
+    avg_jerk = df['Jerk(m/s^3)'].mean()
+    avg_heading_change = df['Heading_Change(degrees)'].mean()
+    avg_braking_intensity = df['Braking_Intensity'].mean()
+    avg_sasv = df['SASV'].mean()
+
+    if pd.isna(avg_speed_kmph):
+        raise ValueError("Insufficient valid speed data to calculate avg_speed")
+
+    return {
+        'avg_speed': avg_speed_mps,  # The key you're expecting in your original code
+        'avg_speed_mps': avg_speed_mps,  # Speed in meters per second
+        'avg_speed_kmph': avg_speed_kmph,  # Speed in kilometers per hour
+        'avg_acceleration': avg_acceleration,
+        'avg_jerk': avg_jerk,
+        'avg_heading_change': avg_heading_change,
+        'avg_braking_intensity': avg_braking_intensity,
+        'avg_sasv': avg_sasv,
+        'total_distance': total_distance
+    }

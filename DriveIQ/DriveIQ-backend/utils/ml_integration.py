@@ -64,37 +64,21 @@ def predict_driver_behavior(processed_data):
 
     return int(driving_score), driving_category
 
+# Function to predict bulk driving behavior using aggregated data
 def predict_bulk_driver_behavior(bulk_features):
+    # These feature names must match what your backend is processing
     feature_columns = [
-        'Speed(m/s)_mean', 'Speed(m/s)_max', 'Speed(m/s)_std',
-        'Acceleration(m/s^2)_mean', 'Acceleration(m/s^2)_max', 'Acceleration(m/s^2)_std',
-        'Heading_Change(degrees)_mean', 'Heading_Change(degrees)_max', 'Heading_Change(degrees)_std',
-        'Jerk(m/s^3)_mean', 'Jerk(m/s^3)_max', 'Jerk(m/s^3)_std',
-        'Braking_Intensity_mean', 'Braking_Intensity_max', 'Braking_Intensity_std',
-        'SASV_total', 'Speed_Violation_total', 'Total_Observations'
+        'Speed(m/s)_mean', 'Acceleration(m/s^2)_mean', 'Jerk(m/s^3)_mean', 'Heading_Change(degrees)_mean', 
+        'Braking_Intensity_mean', 'SASV_total', 'Speed_Violation_total', 'Total_Observations'
     ]
 
-    # Print the features being passed for debugging
-    print("Features being passed for prediction:", bulk_features)
-
-    # Ensure all required features are present
-    missing_bulk_features = [feature for feature in feature_columns if feature not in bulk_features]
-    if missing_bulk_features:
-        raise ValueError(f"Missing required feature(s): {', '.join(missing_bulk_features)}")
-
-    # Create DataFrame for bulk features and scale the data
     bulk_data = pd.DataFrame([bulk_features])
     
-    # Print the DataFrame being scaled for debugging
-    print("Bulk data for prediction:", bulk_data)
-
+    # Scale the data for prediction
     bulk_data_scaled = bulk_scaler.transform(bulk_data[feature_columns])
 
-    # Predict category using the bulk-level model
+    # Predict category using the bulk model
     predicted_category = bulk_model.predict(bulk_data_scaled)
 
-    # Log the prediction result
-    print("Predicted category:", predicted_category)
-
-    # Convert numpy int to standard int for JSON serialization
-    return categorize_driving_score(predicted_category[0]), int(predicted_category[0])  # Return both the category and score as standard int
+    # Categorize the result based on predicted category
+    return categorize_driving_score(predicted_category[0]), int(predicted_category[0])

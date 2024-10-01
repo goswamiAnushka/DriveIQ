@@ -54,23 +54,19 @@ class Trip(db.Model):
 
     driver = db.relationship('Driver', backref=db.backref('trips', lazy=True))
 
-# Aggregated Data Table
 class AggregatedData(db.Model):
     __tablename__ = 'aggregated_data'
     id = db.Column(db.Integer, primary_key=True)
     driver_id = db.Column(db.Integer, db.ForeignKey('driver.id'), nullable=False)
-    period = db.Column(db.String(50), nullable=False)
+    period = db.Column(db.String(50), nullable=False)  # Daily or weekly
     avg_speed = db.Column(db.Float, nullable=True)
     avg_acceleration = db.Column(db.Float, nullable=True)
     avg_jerk = db.Column(db.Float, nullable=True)
     avg_heading_change = db.Column(db.Float, nullable=True)
     avg_braking_intensity = db.Column(db.Float, nullable=True)
     avg_sasv = db.Column(db.Float, nullable=True)
-    total_distance = db.Column(db.Float, nullable=True)
-    avg_score = db.Column(db.Float, nullable=True)
-    risk_level = db.Column(db.String(50), nullable=True)
-    speed_violation_count = db.Column(db.Integer, nullable=True)  # Added feature
-    total_observations = db.Column(db.Integer, nullable=True)  # Added feature
+    speed_violation_count = db.Column(db.Integer, nullable=True)
+    total_observations = db.Column(db.Integer, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
+    
     driver = db.relationship('Driver', backref=db.backref('aggregated_data', lazy=True))

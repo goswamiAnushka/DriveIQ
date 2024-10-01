@@ -16,46 +16,40 @@ def get_all_drivers():
     driver_list = [{"id": driver.id, "name": driver.name} for driver in drivers]
     return jsonify(driver_list), 200
 
+# Admin route to get bulk data for a driver
 @admin_bp.route('/driver/bulk_data/<int:driver_id>', methods=['GET'])
 def get_bulk_driver_data(driver_id):
-    end_date = request.args.get('end_date')  # Handle end_date if needed
-    processed_data = process_bulk_data(driver_id, end_date=end_date)
-
-    if 'error' in processed_data:
-        return jsonify({"error": processed_data['error']}), 400
-
-    bulk_features = {
-        'Speed(m/s)_mean': processed_data['Speed(m/s)_mean'],
-        'Speed(m/s)_max': processed_data['Speed(m/s)_max'],
-        'Speed(m/s)_std': processed_data['Speed(m/s)_std'],
-        'Acceleration(m/s^2)_mean': processed_data['Acceleration(m/s^2)_mean'],
-        'Acceleration(m/s^2)_max': processed_data['Acceleration(m/s^2)_max'],
-        'Acceleration(m/s^2)_std': processed_data['Acceleration(m/s^2)_std'],
-        'Heading_Change(degrees)_mean': processed_data['Heading_Change(degrees)_mean'],
-        'Heading_Change(degrees)_max': processed_data['Heading_Change(degrees)_max'],
-        'Heading_Change(degrees)_std': processed_data['Heading_Change(degrees)_std'],
-        'Jerk(m/s^3)_mean': processed_data['Jerk(m/s^3)_mean'],
-        'Jerk(m/s^3)_max': processed_data['Jerk(m/s^3)_max'],
-        'Jerk(m/s^3)_std': processed_data['Jerk(m/s^3)_std'],
-        'Braking_Intensity_mean': processed_data['Braking_Intensity_mean'],
-        'Braking_Intensity_max': processed_data['Braking_Intensity_max'],
-        'Braking_Intensity_std': processed_data['Braking_Intensity_std'],
-        'SASV_total': processed_data['SASV_total'],
-        'Speed_Violation_total': processed_data['Speed_Violation_total'],
-        'Total_Observations': processed_data['Total_Observations']
-    }
-
     try:
-        category = predict_bulk_driver_behavior(bulk_features)
-        return jsonify({"category": category}), 200
-    except ValueError as e:
-        logging.error(f"Prediction failed: {str(e)}")
-        return jsonify({"error": str(e)}), 400
+        # Process bulk data based on aggregated daily data
+        processed_data = process_bulk_data(driver_id)
+
+        # Check if any errors occurred during processing
+        if 'error' in processed_data:
+            return jsonify({"error": processed_data['error']}), 400
+
+        # Extract features for prediction
+        bulk_features = {
+            'Speed(m/s)_mean': processed_data['Speed(m/s)_mean'],
+            'Acceleration(m/s^2)_mean': processed_data['Acceleration(m/s^2)_mean'],
+            'Jerk(m/s^3)_mean': processed_data['Jerk(m/s^3)_mean'],
+            'Heading_Change(degrees)_mean': processed_data['Heading_Change(degrees)_mean'],
+            'Braking_Intensity_mean': processed_data['Braking_Intensity_mean'],
+            'SASV_total': processed_data['SASV_total'],
+            'Total_Observations': processed_data['Total_Observations']
+        }
+
+        # Pass the aggregated data to the ML model for scoring
+        driving_category, driving_score = predict_bulk_driver_behavior(bulk_features)
+
+        return jsonify({
+            "category": driving_category,
+            "driving_score": driving_score,
+            "aggregated_data": bulk_features
+        }), 200
+
     except Exception as e:
-        logging.error(f"Unexpected error during prediction: {str(e)}")
-        return jsonify({"error": "Prediction failed due to an unexpected error."}), 500
-
-
+        logging.error(f"Error during bulk prediction: {str(e)}")
+        return jsonify({"error": "An error occurred while processing bulk data"}), 500
 # Generate PDF report for a driver
 @admin_bp.route('/report/pdf/<int:driver_id>', methods=['GET'])
 def generate_pdf(driver_id):

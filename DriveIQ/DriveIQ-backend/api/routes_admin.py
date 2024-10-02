@@ -1,11 +1,9 @@
 from flask import Blueprint, jsonify, send_file, request
-from app.db import db, Driver, Trip
+from app.db import db, Driver, Trip,AggregatedData
 from utils.bulk_data_processing import process_bulk_data
-from utils.report_generator import generate_pdf_report, generate_excel_report
 from utils.ml_integration import predict_bulk_driver_behavior
 import logging
 from io import BytesIO
-
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -14,96 +12,104 @@ admin_bp = Blueprint('admin', __name__)
 def get_all_drivers():
     drivers = Driver.query.all()
     driver_list = [{"id": driver.id, "name": driver.name} for driver in drivers]
+    logging.info(f"Admin retrieved all drivers: {driver_list}")
     return jsonify(driver_list), 200
 
-# Admin route to get bulk data for a driver
-@admin_bp.route('/driver/bulk_data/<int:driver_id>', methods=['GET'])
-def get_bulk_driver_data(driver_id):
+# Admin route to get all daily data for a driver until the current date
+@admin_bp.route('/driver/all_daily_data/<int:driver_id>', methods=['GET'])
+def get_all_daily_driver_data(driver_id):
     try:
-        # Process bulk data based on aggregated daily data
-        processed_data = process_bulk_data(driver_id)
+        # Query all daily aggregated data for the given driver
+        daily_data = AggregatedData.query.filter_by(driver_id=driver_id).order_by(AggregatedData.date).all()
 
-        # Check if any errors occurred during processing
-        if 'error' in processed_data:
-            return jsonify({"error": processed_data['error']}), 400
+        if not daily_data:
+            return jsonify({"error": f"No data found for driver {driver_id}."}), 404
 
-        # Extract features for prediction
-        bulk_features = {
-            'Speed(m/s)_mean': processed_data['Speed(m/s)_mean'],
-            'Acceleration(m/s^2)_mean': processed_data['Acceleration(m/s^2)_mean'],
-            'Jerk(m/s^3)_mean': processed_data['Jerk(m/s^3)_mean'],
-            'Heading_Change(degrees)_mean': processed_data['Heading_Change(degrees)_mean'],
-            'Braking_Intensity_mean': processed_data['Braking_Intensity_mean'],
-            'SASV_total': processed_data['SASV_total'],
-            'Total_Observations': processed_data['Total_Observations']
-        }
+        # Group and format the daily data
+        grouped_data = {}
+        for data in daily_data:
+            day = str(data.date)
+            if day not in grouped_data:
+                grouped_data[day] = []
+            grouped_data[day].append({
+                'avg_speed': data.avg_speed,
+                'avg_acceleration': data.avg_acceleration,
+                'avg_jerk': data.avg_jerk,
+                'avg_heading_change': data.avg_heading_change,
+                'avg_braking_intensity': data.avg_braking_intensity,
+                'avg_sasv': data.avg_sasv,
+                'speed_violation_count': data.speed_violation_count,
+                'total_observations': data.total_observations,
+                'driving_score': data.driving_score,  # Fetch driving score
+                'driving_category': data.driving_category  # Fetch driving category
+            })
 
-        # Pass the aggregated data to the ML model for scoring
-        driving_category, driving_score = predict_bulk_driver_behavior(bulk_features)
-
+        # Format and return the data grouped by date
         return jsonify({
-            "category": driving_category,
-            "driving_score": driving_score,
-            "aggregated_data": bulk_features
+            "driver_id": driver_id,
+            "daily_data": grouped_data
         }), 200
 
     except Exception as e:
-        logging.error(f"Error during bulk prediction: {str(e)}")
-        return jsonify({"error": "An error occurred while processing bulk data"}), 500
-# Generate PDF report for a driver
-@admin_bp.route('/report/pdf/<int:driver_id>', methods=['GET'])
-def generate_pdf(driver_id):
-    driver = Driver.query.get(driver_id)
-    if not driver:
-        return jsonify({"error": "Driver not found"}), 404
+        logging.error(f"Error fetching daily data for driver {driver_id}: {str(e)}")
+        return jsonify({"error": "An error occurred while fetching daily data"}), 500
 
-    report_data = {
-        "name": driver.name,
-        "total_trips": Trip.query.filter_by(driver_id=driver_id).count(),
-        "average_score": process_bulk_data(driver_id).get('avg_speed', "No data"),
-        "trips": [{"trip_id": trip.trip_id, "score": trip.score} for trip in driver.trips]
-    }
 
-    pdf_file = BytesIO()
-    generate_pdf_report(report_data, pdf_file)
-    pdf_file.seek(0)
+@admin_bp.route('/driver/bulk_consolidated_data/<int:driver_id>', methods=['GET'])
+def get_bulk_consolidated_driver_data(driver_id):
+    try:
+        # Query all daily aggregated data for the given driver
+        daily_aggregates = AggregatedData.query.filter_by(driver_id=driver_id).order_by(AggregatedData.date).all()
 
-    return send_file(pdf_file, mimetype='application/pdf', as_attachment=True, download_name=f"driver_{driver.name}_report.pdf")
+        if not daily_aggregates:
+            return jsonify({"error": f"No daily data found for driver {driver_id}."}), 404
 
-# Generate Excel report for a driver
-@admin_bp.route('/report/excel/<int:driver_id>', methods=['GET'])
-def generate_excel(driver_id):
-    driver = Driver.query.get(driver_id)
-    if not driver:
-        return jsonify({"error": "Driver not found"}), 404
-
-    report_data = {
-        "name": driver.name,
-        "total_trips": Trip.query.filter_by(driver_id=driver_id).count(),
-        "average_score": process_bulk_data(driver_id).get('avg_speed', "No data"),
-        "trips": [{"trip_id": trip.trip_id, "score": trip.score} for trip in driver.trips]
-    }
-
-    excel_file = BytesIO()
-    generate_excel_report(report_data, excel_file)
-    excel_file.seek(0)
-
-    return send_file(excel_file, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, download_name=f"driver_{driver.name}_report.xlsx")
-
-# Leaderboard: Get drivers ranked by their scores
-@admin_bp.route('/leaderboard', methods=['GET'])
-def leaderboard():
-    drivers = Driver.query.all()
-    driver_scores = [
-        {
-            "id": driver.id,
-            "name": driver.name,
-            "average_score": process_bulk_data(driver.id).get('avg_speed', 0)
+        # Initialize dictionary to accumulate aggregated factors
+        total_data = {
+            'Speed(m/s)_mean': 0,
+            'Acceleration(m/s^2)_mean': 0,
+            'Jerk(m/s^3)_mean': 0,
+            'Heading_Change(degrees)_mean': 0,
+            'Braking_Intensity_mean': 0,
+            'SASV_total': 0,
+            'Speed_Violation_total': 0,
+            'Total_Observations': 0
         }
-        for driver in drivers
-    ]
+        total_score = 0
+        total_days = len(daily_aggregates)
 
-    # Sort by average score
-    driver_scores = sorted(driver_scores, key=lambda x: x['average_score'], reverse=True)
+        # Accumulate data from each day's record
+        for day_data in daily_aggregates:
+            total_data['Speed(m/s)_mean'] += day_data.avg_speed
+            total_data['Acceleration(m/s^2)_mean'] += day_data.avg_acceleration
+            total_data['Jerk(m/s^3)_mean'] += day_data.avg_jerk
+            total_data['Heading_Change(degrees)_mean'] += day_data.avg_heading_change
+            total_data['Braking_Intensity_mean'] += day_data.avg_braking_intensity
+            total_data['SASV_total'] += day_data.avg_sasv
+            total_data['Speed_Violation_total'] += day_data.speed_violation_count
+            total_data['Total_Observations'] += day_data.total_observations
+            total_score += day_data.driving_score  # Accumulate daily driving score
 
-    return jsonify(driver_scores), 200
+        # Calculate averages for features
+        for key in total_data.keys():
+            if key.endswith('_mean'):
+                total_data[key] /= total_days
+
+        # Calculate the average score
+        avg_driving_score = total_score / total_days
+
+        # Send consolidated data to the bulk ML model (if needed)
+        driving_category, driving_score = predict_bulk_driver_behavior([total_data])
+
+        # You can choose to either use the score predicted by the ML model or the averaged score from daily data.
+        # For now, we return the averaged daily score as well.
+        return jsonify({
+            "aggregated_data": total_data,
+            "driving_category": driving_category,
+            "average_driving_score": avg_driving_score,  # Average of daily driving scores
+            "model_predicted_score": driving_score  # Predicted score from the model
+        }), 200
+
+    except Exception as e:
+        logging.error(f"Error during bulk prediction for driver {driver_id}: {str(e)}")
+        return jsonify({"error": "An error occurred while processing bulk data"}), 500

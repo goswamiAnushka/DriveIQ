@@ -3,6 +3,8 @@ import numpy as np
 import pickle
 import pandas as pd
 import logging
+from scipy import stats
+
 
 # Paths to the trip-level and bulk-level model files and scalers
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -29,7 +31,7 @@ with open(bulk_scaler_path, 'rb') as bulk_scaler_file:
 
 # Categorize driving score based on thresholds
 def categorize_driving_score(score):
-    if score >= 85:
+    if score >= 80:
         return 'Safe'
     elif score >= 60:
         return 'Moderate'
@@ -47,7 +49,8 @@ def predict_driver_behavior(processed_data):
         raise ValueError("Input data must be a pandas DataFrame")
 
     # Features required for the ML model
-    features = ['Speed(m/s)', 'Acceleration(m/s^2)', 'Heading_Change(degrees)', 'Jerk(m/s^3)', 'Braking_Intensity', 'SASV', 'Speed_Violation']
+    features = ['Speed(m/s)', 'Acceleration(m/s^2)', 'Heading_Change(degrees)', 
+                'Jerk(m/s^3)', 'Braking_Intensity', 'SASV', 'Speed_Violation']
 
     # Ensure all required columns are present
     missing_features = [f for f in features if f not in processed_data.columns]
@@ -65,20 +68,34 @@ def predict_driver_behavior(processed_data):
     return int(driving_score), driving_category
 
 # Function to predict bulk driving behavior using aggregated data
-def predict_bulk_driver_behavior(bulk_features):
-    # These feature names must match what your backend is processing
+def predict_bulk_driver_behavior(bulk_data):
+    # Ensure feature consistency in the bulk model
     feature_columns = [
-        'Speed(m/s)_mean', 'Acceleration(m/s^2)_mean', 'Jerk(m/s^3)_mean', 'Heading_Change(degrees)_mean', 
-        'Braking_Intensity_mean', 'SASV_total', 'Speed_Violation_total', 'Total_Observations'
+        'Speed(m/s)_mean', 'Acceleration(m/s^2)_mean', 'Heading_Change(degrees)_mean',
+        'Jerk(m/s^3)_mean', 'Braking_Intensity_mean', 'SASV_total', 'Speed_Violation_total'
     ]
 
-    bulk_data = pd.DataFrame([bulk_features])
-    
-    # Scale the data for prediction
-    bulk_data_scaled = bulk_scaler.transform(bulk_data[feature_columns])
+    try:
+        # Convert bulk_data to DataFrame
+        bulk_data_df = pd.DataFrame(bulk_data)
 
-    # Predict category using the bulk model
-    predicted_category = bulk_model.predict(bulk_data_scaled)
+        # Ensure all required columns are present
+        missing_features = [f for f in feature_columns if f not in bulk_data_df.columns]
+        if missing_features:
+            raise ValueError(f"Missing required features for prediction: {', '.join(missing_features)}")
 
-    # Categorize the result based on predicted category
-    return categorize_driving_score(predicted_category[0]), int(predicted_category[0])
+        # Scale the data for prediction
+        bulk_data_scaled = bulk_scaler.transform(bulk_data_df[feature_columns])
+
+        # Predict category probabilities using the bulk model
+        category_probabilities = bulk_model.predict_proba(bulk_data_scaled)
+
+        # Calculate the average score and determine the most frequent category
+        average_score = calculate_driving_score_from_probabilities(category_probabilities)
+        driving_category = categorize_driving_score(average_score)
+
+        return driving_category, int(average_score)
+
+    except Exception as e:
+        logging.error(f"Error during bulk prediction: {str(e)}")
+        raise

@@ -1,4 +1,4 @@
-DriverId,Speed(m/s)_mean,Acceleration(m/s^2)_mean,Jerk(m/s^3)_mean,Braking_Intensity_mean,Heading_Change(degrees)_mean,SASV_mode,Speed_Violation_mode,Total_Observations,Driving_Score,Driving_Category
+DriverId,Speed(m/s)_mean,Acceleration(m/s^2)_mean,Jerk(m/s^3)_mean,Braking_Intensity_mean,Heading_Change(degrees)_mean,SASV_total,Speed_Violation_total,Total_Observations,Driving_Score,Driving_Category
 1,0.5200575027382256,0.4219663742690062,0.4989590824785176,0.08959474260679058,0.38456599256498686,0,1,913,58.880637766432855,Risky
 2,0.5299432829181494,0.4189417570991319,0.49996371864527506,0.08683274021352291,0.6649999527434828,0,1,843,55.883309748830456,Risky
 3,0.2885473901098901,0.42088170349039955,0.5008709788854747,0.09846153846153824,0.18957095474876431,0,0,910,81.58071756067405,Safe

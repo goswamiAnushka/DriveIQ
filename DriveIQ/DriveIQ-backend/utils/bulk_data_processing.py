@@ -1,18 +1,20 @@
+import numpy as np
+import pandas as pd
 import logging
 from app.db import AggregatedData
-from sqlalchemy import func
 
-# Bulk data processing logic using daily aggregated data
+# Function to calculate averages for multiple daily aggregated records
 def process_bulk_data(driver_id):
     try:
         # Query all daily aggregated data for the given driver
-        daily_aggregates = AggregatedData.query.filter_by(driver_id=driver_id).all()
+        daily_aggregates = AggregatedData.query.filter_by(driver_id=driver_id).order_by(AggregatedData.date).all()
 
         if not daily_aggregates:
+            logging.error(f"No daily data found for driver_id {driver_id}.")
             return {"error": "No daily data found for this driver."}
 
-        # Initialize aggregation dictionary
-        aggregated_data = {
+        # Initialize dictionary to accumulate aggregated factors
+        total_data = {
             'Speed(m/s)_mean': 0,
             'Acceleration(m/s^2)_mean': 0,
             'Jerk(m/s^3)_mean': 0,
@@ -22,27 +24,43 @@ def process_bulk_data(driver_id):
             'Speed_Violation_total': 0,
             'Total_Observations': 0
         }
-
+        total_score = 0  # Track total driving score
         total_days = len(daily_aggregates)
-        for daily in daily_aggregates:
-            aggregated_data['Speed(m/s)_mean'] += daily.avg_speed
-            aggregated_data['Acceleration(m/s^2)_mean'] += daily.avg_acceleration
-            aggregated_data['Jerk(m/s^3)_mean'] += daily.avg_jerk
-            aggregated_data['Heading_Change(degrees)_mean'] += daily.avg_heading_change
-            aggregated_data['Braking_Intensity_mean'] += daily.avg_braking_intensity
-            aggregated_data['SASV_total'] += daily.avg_sasv
-            aggregated_data['Speed_Violation_total'] += daily.speed_violation_count
-            aggregated_data['Total_Observations'] += daily.total_observations
 
-        # Take averages over the total days
-        for key in aggregated_data.keys():
+        # Accumulate data from each day's record
+        for day_data in daily_aggregates:
+            total_data['Speed(m/s)_mean'] += day_data.avg_speed
+            total_data['Acceleration(m/s^2)_mean'] += day_data.avg_acceleration
+            total_data['Jerk(m/s^3)_mean'] += day_data.avg_jerk
+            total_data['Heading_Change(degrees)_mean'] += day_data.avg_heading_change
+            total_data['Braking_Intensity_mean'] += day_data.avg_braking_intensity
+            total_data['SASV_total'] += day_data.avg_sasv
+            total_data['Speed_Violation_total'] += day_data.speed_violation_count
+            total_data['Total_Observations'] += day_data.total_observations
+            total_score += day_data.driving_score  # Add each day's driving score
+
+        # Calculate averages for features
+        for key in total_data.keys():
             if key.endswith('_mean'):
-                aggregated_data[key] /= total_days
+                total_data[key] /= total_days
 
-        logging.info(f"Aggregated Data for Driver {driver_id}: {aggregated_data}")
+        # Calculate the average driving score
+        average_score = total_score / total_days
 
-        return aggregated_data
+        # Prepare the data for ML model (returning only the relevant metrics)
+        processed_data = pd.DataFrame([{
+            'Speed(m/s)_mean': total_data['Speed(m/s)_mean'],
+            'Acceleration(m/s^2)_mean': total_data['Acceleration(m/s^2)_mean'],
+            'Jerk(m/s^3)_mean': total_data['Jerk(m/s^3)_mean'],
+            'Heading_Change(degrees)_mean': total_data['Heading_Change(degrees)_mean'],
+            'Braking_Intensity_mean': total_data['Braking_Intensity_mean'],
+            'SASV_total': total_data['SASV_total'],
+            'Speed_Violation_total': total_data['Speed_Violation_total'],
+            'Average_Score': average_score  # Include the average score
+        }])
+
+        return processed_data
 
     except Exception as e:
         logging.error(f"Error in bulk data processing for driver {driver_id}: {str(e)}")
-        return {"error": "An error occurred during bulk processing."}
+        return {"error": "An error occurred during bulk data processing."}

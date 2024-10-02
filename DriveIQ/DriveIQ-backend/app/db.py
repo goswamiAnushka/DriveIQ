@@ -53,12 +53,12 @@ class Trip(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     driver = db.relationship('Driver', backref=db.backref('trips', lazy=True))
-
 class AggregatedData(db.Model):
     __tablename__ = 'aggregated_data'
     id = db.Column(db.Integer, primary_key=True)
     driver_id = db.Column(db.Integer, db.ForeignKey('driver.id'), nullable=False)
-    period = db.Column(db.String(50), nullable=False)  # Daily or weekly
+    period = db.Column(db.String(50), nullable=False)  
+    date = db.Column(db.Date, nullable=False) 
     avg_speed = db.Column(db.Float, nullable=True)
     avg_acceleration = db.Column(db.Float, nullable=True)
     avg_jerk = db.Column(db.Float, nullable=True)
@@ -67,6 +67,9 @@ class AggregatedData(db.Model):
     avg_sasv = db.Column(db.Float, nullable=True)
     speed_violation_count = db.Column(db.Integer, nullable=True)
     total_observations = db.Column(db.Integer, nullable=True)
+    driving_score = db.Column(db.Float, nullable=True)  # Add this column
+    driving_category = db.Column(db.String(50), nullable=True)  # Add this column
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
     
     driver = db.relationship('Driver', backref=db.backref('aggregated_data', lazy=True))

@@ -5,6 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_cors import CORS  # Enable CORS for cross-origin requests
 from flask_socketio import SocketIO, emit  # For enabling real-time WebSocket communication
+from dotenv import load_dotenv  # Load environment variables from .env file
 
 # Add the root project directory (DriveIQ-backend) to sys.path to resolve other imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -13,24 +14,30 @@ from app.db import db  # Import the db instance from app.db
 from api.routes import api_bp  # Import API routes
 from api.routes_admin import admin_bp  # Import Admin routes
 
+# Load environment variables from .env
+load_dotenv()
+
 # Initialize the Flask application
 app = Flask(__name__)
 
 # Enable CORS to allow requests from your frontend (React) running on a different domain/port
 CORS(app)
 
-# Configure the SQLite database with the correct path
-basedir = os.path.abspath(os.path.dirname(__file__))  # This points to the app/ directory
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, '..', 'instance', 'driveiq.db')  # Goes up one level to DriveIQ-backend
+# Configure the SQLAlchemy database with the correct path from the .env file
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI')
 
+# Set SQLAlchemy configuration
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# JWT Secret Key from environment variables
+app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
 
 # Initialize SQLAlchemy and Migrate
 db.init_app(app)
 migrate = Migrate(app, db)
 
 # Initialize SocketIO for real-time data streaming
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins=os.getenv('SOCKETIO_CORS_ALLOWED_ORIGINS'))
 
 # Register the API blueprint (driver routes)
 app.register_blueprint(api_bp, url_prefix='/api')

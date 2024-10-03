@@ -2,6 +2,7 @@ import uuid
 from flask import Blueprint, request, jsonify
 from werkzeug.utils import secure_filename
 import os
+import random
 from app.db import db, Driver, Trip, AggregatedData
 from utils.jwt_auth import create_token, jwt_required
 from utils.data_processing import process_gps_data
@@ -9,11 +10,15 @@ from utils.ml_integration import predict_driver_behavior
 from datetime import datetime, timedelta
 from sqlalchemy.exc import IntegrityError
 import pandas as pd
+from utils.mailer import send_otp_email
 import json
 from datetime import date
 import logging
 
 api_bp = Blueprint('api', __name__)
+
+# Store OTPs temporarily (ideally, use Redis or a database)
+otp_storage = {}
 
 UPLOAD_FOLDER = 'uploads/identity_proofs'
 if not os.path.exists(UPLOAD_FOLDER):
@@ -24,6 +29,62 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+# Driver Registration Route with OTP Generation
+@api_bp.route('/register', methods=['POST'])
+def register():
+    data = request.json
+    name = data.get('name')
+    email = data.get('email')
+    password = data.get('password')
+    accepted_terms = data.get('accepted_terms')
+
+    if not name or not email or not password or not accepted_terms:
+        logging.error("Missing registration data.")
+        return jsonify({"error": "All fields are required"}), 400
+
+    # Check if driver is already registered
+    if Driver.query.filter_by(email=email).first():
+        logging.error(f"Email {email} is already registered.")
+        return jsonify({"error": "Email is already registered"}), 400
+
+    # Generate OTP
+    otp = random.randint(100000, 999999)
+    otp_storage[email] = otp
+
+    # Send OTP via email
+    try:
+        send_otp_email(email, otp)  # Use Nodemailer-like utility
+        logging.info(f"OTP sent to {email} for registration.")
+        return jsonify({"message": "OTP sent. Please verify your email."}), 200
+    except Exception as e:
+        logging.error(f"Failed to send OTP to {email}: {str(e)}")
+        return jsonify({"error": "Failed to send OTP"}), 500
+
+# OTP Verification Route
+@api_bp.route('/verify-otp', methods=['POST'])
+def verify_otp():
+    data = request.json
+    email = data.get('email')
+    otp = data.get('otp')
+    password = data.get('password')
+
+    if otp_storage.get(email) == int(otp):
+        driver = Driver.query.filter_by(email=email).first()
+
+        if driver:
+            return jsonify({"message": "User already exists."}), 400
+
+        new_driver = Driver(name=data['name'], email=email, accepted_terms=True)
+        new_driver.set_password(password)
+        db.session.add(new_driver)
+        db.session.commit()
+
+        token = create_token(new_driver.id)
+        return jsonify({"message": "OTP verified, registration successful", "token": token}), 200
+    else:
+        return jsonify({"error": "Invalid OTP"}), 400
+
+
 # Define thresholds (SPEED_THRESHOLD for low speeds and STOP_TIME_THRESHOLD for idle time)
 SPEED_THRESHOLD = 5  # m/s (~18 km/h)
 STOP_TIME_THRESHOLD = timedelta(minutes=5)  # Idle time threshold before starting a new trip
@@ -31,39 +92,6 @@ STOP_TIME_THRESHOLD = timedelta(minutes=5)  # Idle time threshold before startin
 def generate_unique_trip_id(driver_id):
     """Generate a truly unique trip ID."""
     return f'T-{driver_id}-{uuid.uuid4()}'
-
-# Driver Registration
-@api_bp.route('/register', methods=['POST'])
-def register():
-    data = request.form
-    name = data.get('name')
-    email = data.get('email')
-    password = data.get('password')
-    accepted_terms = data.get('accepted_terms')
-    identity_proof = request.files.get('identity_proof')
-
-    if not name or not email or not password or not accepted_terms or not identity_proof:
-        logging.error("Missing registration data.")
-        return jsonify({"error": "All fields are required"}), 400
-    if not allowed_file(identity_proof.filename):
-        logging.error("Invalid file format.")
-        return jsonify({"error": "Invalid file format"}), 400
-
-    if Driver.query.filter_by(email=email).first():
-        logging.error(f"Email {email} is already registered.")
-        return jsonify({"error": "Email is already registered"}), 400
-
-    filename = secure_filename(identity_proof.filename)
-    file_path = os.path.join(UPLOAD_FOLDER, filename)
-    identity_proof.save(file_path)
-
-    new_driver = Driver(name=name, email=email, accepted_terms=True, identity_proof=file_path)
-    new_driver.set_password(password)
-    db.session.add(new_driver)
-    db.session.commit()
-
-    logging.info(f"Driver {name} registered successfully.")
-    return jsonify({"message": "Registration successful"}), 201
 
 # Driver Login
 @api_bp.route('/login', methods=['POST'])

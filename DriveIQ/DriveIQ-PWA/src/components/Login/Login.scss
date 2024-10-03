@@ -1,0 +1,116 @@
+// src/components/Login/Login.scss
+
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: linear-gradient(135deg, #00b4d8, #0077b6);
+    position: relative;
+  
+    .login-box {
+      background-color: #ffffff;
+      padding: 40px;
+      border-radius: 10px;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+  
+      h2 {
+        margin-bottom: 25px;
+        font-size: 2rem;
+        color: #333;
+        font-family: 'Poppins', sans-serif;
+        font-weight: 600;
+      }
+  
+      .form-group {
+        margin-bottom: 20px;
+  
+        label {
+          display: block;
+          margin-bottom: 10px;
+          font-size: 1.1rem;
+          color: #333;
+          font-family: 'Poppins', sans-serif;
+        }
+  
+        input {
+          width: 100%;
+          padding: 12px;
+          font-size: 1rem;
+          border-radius: 5px;
+          border: 1px solid #ccc;
+          transition: border 0.2s ease;
+  
+          &:focus {
+            border-color: #0077b6;
+          }
+        }
+      }
+  
+      .error-message {
+        color: #e74c3c;
+        font-size: 0.9rem;
+        margin-bottom: 15px;
+        font-family: 'Poppins', sans-serif;
+      }
+  
+      .btn-login {
+        width: 100%;
+        padding: 12px;
+        font-size: 1.2rem;
+        background-color: #00b4d8;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        font-family: 'Poppins', sans-serif;
+        font-weight: 500;
+  
+        &:hover {
+          background-color: #0077b6;
+        }
+      }
+  
+      .register-link {
+        margin-top: 20px;
+        font-size: 0.95rem;
+        color: #333;
+  
+        a {
+          color: #00b4d8;
+          text-decoration: none;
+          font-family: 'Poppins', sans-serif;
+  
+          &:hover {
+            text-decoration: underline;
+          }
+        }
+      }
+    }
+  
+    /* Chatbot icon styling */
+    .chatbot-icon {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background-color: #00b4d8;
+      padding: 15px;
+      border-radius: 50%;
+      color: white;
+      cursor: pointer;
+      transition: transform 0.3s ease;
+  
+      svg {
+        font-size: 1.8rem;
+      }
+  
+      &:hover {
+        transform: scale(1.1);
+      }
+    }
+  }
+  

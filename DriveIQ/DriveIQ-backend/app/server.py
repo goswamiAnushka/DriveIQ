@@ -3,11 +3,11 @@ import os
 from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from flask_cors import CORS  # Enable CORS for cross-origin requests
-from flask_socketio import SocketIO, emit  # For enabling real-time WebSocket communication
+from flask_cors import CORS
+from flask_socketio import SocketIO, emit
 from dotenv import load_dotenv  # Load environment variables from .env file
+from flask_jwt_extended import JWTManager  # JWT support
 
-# Add the root project directory (DriveIQ-backend) to sys.path to resolve other imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.db import db  # Import the db instance from app.db
@@ -21,23 +21,25 @@ load_dotenv()
 app = Flask(__name__)
 
 # Enable CORS to allow requests from your frontend (React) running on a different domain/port
-CORS(app)
+CORS(app, resources={r"/*": {"origins": os.getenv('CORS_ALLOWED_ORIGINS').split(',')}})
 
-# Configure the SQLAlchemy database with the correct path from the .env file
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI')
-
-# Set SQLAlchemy configuration
+# Configure the SQLite database with the correct path
+basedir = os.path.abspath(os.path.dirname(__file__))  # This points to the app/ directory
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, '..', 'instance', 'driveiq.db')  # Goes up one level to DriveIQ-backend
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# JWT Secret Key from environment variables
-app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
+app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your_fallback_secret')  # Should match
+
 
 # Initialize SQLAlchemy and Migrate
 db.init_app(app)
 migrate = Migrate(app, db)
 
+# Initialize JWT
+jwt = JWTManager(app)
+
 # Initialize SocketIO for real-time data streaming
-socketio = SocketIO(app, cors_allowed_origins=os.getenv('SOCKETIO_CORS_ALLOWED_ORIGINS'))
+socketio = SocketIO(app, cors_allowed_origins=os.getenv('SOCKETIO_CORS_ALLOWED_ORIGINS', '*'))
 
 # Register the API blueprint (driver routes)
 app.register_blueprint(api_bp, url_prefix='/api')
@@ -67,5 +69,4 @@ def gps_update(data):
     emit('gps_response', {'data': 'GPS data received'}, broadcast=True)
 
 if __name__ == "__main__":
-    # Run the app using SocketIO to support both HTTP and WebSocket
-    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
+    socketio.run(app, debug=True)

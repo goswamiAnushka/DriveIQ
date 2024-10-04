@@ -1,14 +1,14 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom'; // Add this import statement
 import './HomePage.scss';
-import Navbar from '../Navbar/Navbar'; // Import Navbar
-import PerformanceGraph from '../PerformanceGraph/PerformanceGraph'; // Import Performance Graph
+import Navbar from '../../components/Navbar/Navbar';
+import PerformanceGraph from '../../components/PerformanceGraph/PerformanceGraph'; // Ensure this import is correct
+
 
 const HomePage = () => {
   return (
     <div className="homepage">
       <Navbar />
-
       {/* Hero Section */}
       <section className="hero">
         <div className="hero-content">

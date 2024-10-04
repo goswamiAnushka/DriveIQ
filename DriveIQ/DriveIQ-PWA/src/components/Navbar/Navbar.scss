@@ -1,79 +1,18 @@
 .navbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 40px;
-    background-color: #0056b3;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    background-color: #333;
+    padding: 1rem;
+    ul {
+      list-style: none;
+      display: flex;
+      justify-content: space-around;
   
-    .logo img {
-      width: 140px;
-      animation: logoFadeIn 1s ease-in-out;
-    }
-  
-    @keyframes logoFadeIn {
-      0% { opacity: 0; transform: scale(0.5); }
-      100% { opacity: 1; transform: scale(1); }
-    }
-  
-    .nav-links {
-      ul {
-        list-style-type: none;
-        display: flex;
-        gap: 30px;
-  
-        li {
-          position: relative;
-          a {
-            text-decoration: none;
-            color: white;
-            font-weight: bold;
-            font-size: 1.1rem;
-            padding: 5px 15px;
-            border-radius: 5px;
-            transition: all 0.3s ease;
-  
-            &:hover {
-              background-color: #007bff;
-              color: #f4f7fb;
-              box-shadow: 0 4px 12px rgba(0, 123, 255, 0.5);
-              transform: translateY(-2px);
-            }
-          }
-        }
-  
-        .login-button {
-          background-color: #28a745;
+      li {
+        a {
           color: white;
-          padding: 10px 20px;
-          border-radius: 20px;
-          font-weight: bold;
-          transition: background-color 0.3s ease;
-  
+          text-decoration: none;
+          font-size: 1.2rem;
           &:hover {
-            background-color: #218838;
-            color: white;
-            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.5);
-            transform: translateY(-2px);
-          }
-        }
-  
-        .admin-button {
-          background-color: #ffc107;
-          color: white;
-          padding: 10px 20px;
-          border-radius: 20px;
-          font-weight: bold;
-          transition: background-color 0.3s ease;
-  
-          &:hover {
-            background-color: #e0a800;
-            color: white;
-            box-shadow: 0 4px 12px rgba(255, 193, 7, 0.5);
-            transform: translateY(-2px);
+            text-decoration: underline;
           }
         }
       }

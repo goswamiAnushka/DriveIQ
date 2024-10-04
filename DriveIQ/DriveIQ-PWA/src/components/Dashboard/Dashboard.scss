@@ -1,0 +1,103 @@
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  background-color: #f4f6f9;
+  min-height: 100vh;
+  font-family: 'Poppins', sans-serif;
+}
+
+h2 {
+  font-size: 2.8rem;
+  color: #2c3e50;
+  margin-bottom: 40px;
+  text-align: center;
+}
+
+.tracking-controls {
+  margin-bottom: 30px;
+}
+
+.tracking-controls button {
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  color: white;
+  font-size: 1.2rem;
+  padding: 14px 28px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.tracking-controls button:hover {
+  background: linear-gradient(135deg, #2ecc71, #27ae60);
+  transform: scale(1.05);
+}
+
+/* Map Container Styling */
+.map-container {
+  height: 600px; /* Increased height for better visibility */
+  width: 100%;
+  max-width: 1200px; /* Max width for larger screens */
+  margin: 0 auto 40px auto; /* Centering the map */
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  border: 2px solid #3498db;
+  background-color: #ffffff;
+}
+
+.map-section {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-bottom: 40px; /* Adding spacing between map and charts */
+}
+
+/* Chart Section Styling */
+.chart-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); /* Responsive grid */
+  gap: 30px;
+  width: 100%;
+  max-width: 1200px;
+}
+
+.chart-container {
+  padding: 20px;
+  background-color: white;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.chart-container:hover {
+  transform: translateY(-10px);
+}
+
+h3 {
+  font-size: 1.8rem;
+  color: #34495e;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.error {
+  color: red;
+  font-size: 1.4rem;
+  margin-top: 20px;
+}
+
+/* Responsive Design */
+@media screen and (max-width: 768px) {
+  .chart-section {
+    grid-template-columns: 1fr;
+  }
+
+  .map-container {
+    height: 400px; /* Slightly smaller height for smaller screens */
+  }
+}

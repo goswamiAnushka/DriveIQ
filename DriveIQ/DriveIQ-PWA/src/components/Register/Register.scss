@@ -1,0 +1,122 @@
+.register-container {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f4f4f4;
+    border-radius: 10px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    font-family: 'Arial', sans-serif;
+  
+    h2 {
+      text-align: center;
+      color: #333;
+      font-size: 1.8rem;
+      margin-bottom: 20px;
+    }
+  
+    form {
+      display: flex;
+      flex-direction: column;
+  
+      input[type='text'],
+      input[type='email'],
+      input[type='password'],
+      input[type='file'] {
+        width: 100%;
+        padding: 12px;
+        margin-bottom: 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 1rem;
+        box-sizing: border-box;
+  
+        &:focus {
+          outline: none;
+          border-color: #007bff;
+        }
+      }
+  
+      label {
+        font-size: 1rem;
+        margin-bottom: 8px;
+        color: #555;
+      }
+  
+      .terms-conditions {
+        margin-bottom: 15px;
+        font-size: 0.9rem;
+        color: #666;
+  
+        a {
+          color: #007bff;
+          text-decoration: none;
+  
+          &:hover {
+            text-decoration: underline;
+          }
+        }
+      }
+  
+      .error-message {
+        color: #ff4d4f;
+        margin-bottom: 10px;
+      }
+  
+      button {
+        width: 100%;
+        padding: 12px;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+  
+        &:hover {
+          background-color: #0056b3;
+        }
+  
+        &:disabled {
+          background-color: #ccc;
+          cursor: not-allowed;
+        }
+      }
+    }
+  
+    .chatbot-icon {
+      text-align: center;
+      margin-top: 20px;
+  
+      a {
+        color: #007bff;
+        font-size: 0.9rem;
+        text-decoration: none;
+  
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+  
+    .no-account {
+      margin-top: 15px;
+      text-align: center;
+  
+      p {
+        font-size: 0.9rem;
+        color: #666;
+      }
+  
+      a {
+        color: #007bff;
+        font-size: 0.9rem;
+        text-decoration: none;
+  
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+  }
+  

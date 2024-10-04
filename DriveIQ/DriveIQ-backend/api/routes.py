@@ -2,43 +2,45 @@ import uuid
 from flask import Blueprint, request, jsonify
 from werkzeug.utils import secure_filename
 import os
-import random
+# Import at the top of your API file
+from flask import jsonify, request
+from sqlalchemy.exc import IntegrityError
 from app.db import db, Driver, Trip, AggregatedData
 from utils.jwt_auth import create_token, jwt_required
 from utils.data_processing import process_gps_data
 from utils.ml_integration import predict_driver_behavior
 from datetime import datetime, timedelta
+from utils.jwt_auth import jwt_required, get_jwt_identity
 from sqlalchemy.exc import IntegrityError
 import pandas as pd
-from utils.mailer import send_otp_email
 import json
 from datetime import date
 import logging
 
 api_bp = Blueprint('api', __name__)
 
-# Store OTPs temporarily (ideally, use Redis or a database)
-otp_storage = {}
-
 UPLOAD_FOLDER = 'uploads/identity_proofs'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
-
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Driver Registration Route with OTP Generation
+# Driver Registration Route without OTP
 @api_bp.route('/register', methods=['POST'])
 def register():
-    data = request.json
+    data = request.form
+    identity_proof = request.files.get('identity_proof')
+
     name = data.get('name')
     email = data.get('email')
     password = data.get('password')
     accepted_terms = data.get('accepted_terms')
 
-    if not name or not email or not password or not accepted_terms:
+    # Ensure all fields are provided
+    if not name or not email or not password or not accepted_terms or not identity_proof:
         logging.error("Missing registration data.")
         return jsonify({"error": "All fields are required"}), 400
 
@@ -47,43 +49,25 @@ def register():
         logging.error(f"Email {email} is already registered.")
         return jsonify({"error": "Email is already registered"}), 400
 
-    # Generate OTP
-    otp = random.randint(100000, 999999)
-    otp_storage[email] = otp
-
-    # Send OTP via email
-    try:
-        send_otp_email(email, otp)  # Use Nodemailer-like utility
-        logging.info(f"OTP sent to {email} for registration.")
-        return jsonify({"message": "OTP sent. Please verify your email."}), 200
-    except Exception as e:
-        logging.error(f"Failed to send OTP to {email}: {str(e)}")
-        return jsonify({"error": "Failed to send OTP"}), 500
-
-# OTP Verification Route
-@api_bp.route('/verify-otp', methods=['POST'])
-def verify_otp():
-    data = request.json
-    email = data.get('email')
-    otp = data.get('otp')
-    password = data.get('password')
-
-    if otp_storage.get(email) == int(otp):
-        driver = Driver.query.filter_by(email=email).first()
-
-        if driver:
-            return jsonify({"message": "User already exists."}), 400
-
-        new_driver = Driver(name=data['name'], email=email, accepted_terms=True)
-        new_driver.set_password(password)
-        db.session.add(new_driver)
-        db.session.commit()
-
-        token = create_token(new_driver.id)
-        return jsonify({"message": "OTP verified, registration successful", "token": token}), 200
+    # Validate and save the uploaded identity proof
+    if identity_proof and allowed_file(identity_proof.filename):
+        filename = secure_filename(identity_proof.filename)
+        identity_proof_path = os.path.join(UPLOAD_FOLDER, filename)
+        identity_proof.save(identity_proof_path)
     else:
-        return jsonify({"error": "Invalid OTP"}), 400
+        logging.error("Invalid file format for identity proof.")
+        return jsonify({"error": "Invalid file format"}), 400
 
+    # Create a new driver
+    new_driver = Driver(name=name, email=email, accepted_terms=True)
+    new_driver.set_password(password)
+    db.session.add(new_driver)
+    db.session.commit()
+
+    token = create_token(new_driver.id)
+
+    logging.info(f"Driver {email} registered successfully.")
+    return jsonify({"message": "Registration successful", "token": token}), 201
 
 # Define thresholds (SPEED_THRESHOLD for low speeds and STOP_TIME_THRESHOLD for idle time)
 SPEED_THRESHOLD = 5  # m/s (~18 km/h)
@@ -93,7 +77,6 @@ def generate_unique_trip_id(driver_id):
     """Generate a truly unique trip ID."""
     return f'T-{driver_id}-{uuid.uuid4()}'
 
-# Driver Login
 @api_bp.route('/login', methods=['POST'])
 def login():
     data = request.json
@@ -114,7 +97,25 @@ def login():
     logging.info(f"Driver {email} logged in successfully.")
     return jsonify({"message": "Login successful", "token": token, "driver_id": driver.id}), 200
 
-# Record GPS data and process trip
+
+@api_bp.route('/user-data', methods=['GET'])
+@jwt_required
+def get_user_data():
+    driver_id = get_jwt_identity()  # Get the user ID from the JWT token
+    driver = Driver.query.get(driver_id)
+
+    if not driver:
+        logging.error(f"Driver {driver_id} not found.")
+        return jsonify({"error": "User not found"}), 404
+
+    return jsonify({
+        'driver_id': driver.id,
+        'name': driver.name,
+        'email': driver.email
+    }), 200
+
+
+
 @api_bp.route('/record-telematics', methods=['POST'])
 @jwt_required
 def record_telematics():
@@ -127,14 +128,12 @@ def record_telematics():
 
     try:
         # Process the GPS data
-        processed_data = process_gps_data(gps_data)
+        processed_data = process_gps_data(gps_data)  # Function to process and calculate driving features
 
         # Check if a new trip should be started or continue the last trip
         latest_trip = Trip.query.filter_by(driver_id=driver_id).order_by(Trip.created_at.desc()).first()
 
-        # Set flag for new trip
         start_new_trip = False
-
         if latest_trip:
             time_since_last_trip = (datetime.utcnow() - latest_trip.created_at).total_seconds()
             if processed_data['avg_speed'] < SPEED_THRESHOLD and time_since_last_trip > STOP_TIME_THRESHOLD.total_seconds():
@@ -142,6 +141,7 @@ def record_telematics():
         else:
             start_new_trip = True
 
+        # Generate a new trip ID if starting a new trip
         trip_id = generate_unique_trip_id(driver_id) if start_new_trip else latest_trip.trip_id
 
         # Prepare data for ML model prediction
@@ -152,51 +152,45 @@ def record_telematics():
             'Jerk(m/s^3)': processed_data['avg_jerk'],
             'Braking_Intensity': processed_data['avg_braking_intensity'],
             'SASV': processed_data['avg_sasv'],
-            'Speed_Violation': processed_data.get('Speed_Violation', 0)
+            'Speed_Violation': processed_data.get('Speed_Violation', 0)  # Default to 0 if not present
         }
 
+        # Call the ML model to get driving behavior score and category
         score, category = predict_driver_behavior(pd.DataFrame([ml_ready_data]))
 
-        new_trip = Trip(
-            driver_id=driver_id,
-            trip_id=trip_id,
-            gps_data=json.dumps(gps_data),
-            avg_speed=processed_data['avg_speed'],
-            avg_acceleration=processed_data['avg_acceleration'],
-            avg_jerk=processed_data['avg_jerk'],
-            avg_heading_change=processed_data['avg_heading_change'],
-            avg_braking_intensity=processed_data['avg_braking_intensity'],
-            avg_sasv=processed_data['avg_sasv'],
-            total_distance=processed_data['total_distance'],
-            score=score,
-            category=category,
-            created_at=datetime.utcnow()
-        )
+        # Try inserting the trip data, handle unique constraint error
+        try:
+            new_trip = Trip(
+                driver_id=driver_id,
+                trip_id=trip_id,
+                gps_data=json.dumps(gps_data),  # Convert to JSON format
+                avg_speed=processed_data['avg_speed'],
+                avg_acceleration=processed_data['avg_acceleration'],
+                avg_jerk=processed_data['avg_jerk'],
+                avg_heading_change=processed_data['avg_heading_change'],
+                avg_braking_intensity=processed_data['avg_braking_intensity'],
+                avg_sasv=processed_data['avg_sasv'],
+                total_distance=processed_data['total_distance'],
+                score=score,
+                category=category,
+                created_at=datetime.utcnow()
+            )
+            db.session.add(new_trip)
+            db.session.commit()
 
-        db.session.add(new_trip)
-        db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            trip_id = generate_unique_trip_id(driver_id)  # Generate new trip_id on conflict
+            new_trip.trip_id = trip_id
+            db.session.add(new_trip)
+            db.session.commit()
 
-        logging.info(f"Telematics data recorded for driver {driver_id}, trip {trip_id}.")
         return jsonify({
             "message": "Telematics data recorded",
             "trip_id": trip_id,
             "driving_score": score,
-            "driving_category": category
-        }), 200
-
-    except IntegrityError:
-        db.session.rollback()
-        trip_id = generate_unique_trip_id(driver_id)
-        new_trip.trip_id = trip_id
-        db.session.add(new_trip)
-        db.session.commit()
-
-        logging.info(f"Telematics data recorded after resolving ID conflict for trip {trip_id}.")
-        return jsonify({
-            "message": "Telematics data recorded after resolving ID conflict",
-            "trip_id": trip_id,
-            "driving_score": score,
-            "driving_category": category
+            "driving_category": category,
+            "features": ml_ready_data,
         }), 200
 
     except Exception as e:

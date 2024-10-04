@@ -1,10 +1,8 @@
 // src/components/Login/Login.jsx
-
 import React, { useState } from 'react';
-import './Login.scss'; // Importing the SCSS for styling
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { FaCommentDots } from 'react-icons/fa'; // Chatbot icon
+import './Login.scss';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -15,25 +13,23 @@ const Login = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('/api/login', { email, password });
+      const response = await axios.post('http://localhost:5000/api/login', { email, password });
       if (response.status === 200) {
-        // Save the token and navigate to the dashboard
+        // Save the token and driver_id in localStorage
         localStorage.setItem('token', response.data.token);
-        navigate('/dashboard');
+        localStorage.setItem('driver_id', response.data.driver_id); // Store driver_id
+        navigate('/dashboard'); // Redirect to dashboard
       }
     } catch (err) {
       setError('Invalid email or password');
     }
   };
 
-  const openChatBot = () => {
-    navigate('/chatbot'); // Navigate to the ChatBot component
-  };
-
   return (
     <div className="login-container">
       <div className="login-box">
         <h2>Driver Login</h2>
+        {error && <p className="error-message">{error}</p>}
         <form onSubmit={handleLogin}>
           <div className="form-group">
             <label htmlFor="email">Email:</label>
@@ -59,19 +55,8 @@ const Login = () => {
             />
           </div>
 
-          {error && <p className="error-message">{error}</p>}
-
           <button type="submit" className="btn-login">Login</button>
         </form>
-
-        <p className="register-link">
-          Don't have an account? <Link to="/register">Register here</Link>.
-        </p>
-      </div>
-
-      {/* Chatbot Icon */}
-      <div className="chatbot-icon" onClick={openChatBot}>
-        <FaCommentDots />
       </div>
     </div>
   );

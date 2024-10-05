@@ -18,6 +18,7 @@
         font-size: 3.5rem;
         margin-bottom: 20px;
         animation: fadeInDown 1.5s ease-in;
+        color: #f0f4f8;
       }
 
       p {
@@ -95,7 +96,7 @@
         h3 {
           font-size: 1.8rem;
           margin-bottom: 15px;
-          color: #333;
+          color: #0e0d0d;
         }
 
         p {
@@ -131,24 +132,56 @@
   @media (max-width: 768px) {
     .hero {
       flex-direction: column;
+      padding: 40px 20px;
       text-align: center;
 
       .hero-content {
         max-width: 100%;
         margin-bottom: 20px;
+
+        h1 {
+          font-size: 2.5rem; // Adjust heading size for mobile
+        }
+
+        p {
+          font-size: 1.5rem; // Adjust paragraph size for mobile
+        }
       }
 
       .hero-images-grid {
         max-width: 100%;
+        grid-template-columns: 1fr; // Change grid to a single-column layout
+        gap: 10px;
       }
     }
 
-    .features-container {
-      flex-direction: column;
+    .features {
+      padding: 40px 20px; // Reduce padding on small screens
 
-      .feature {
-        max-width: 80%;
-        margin: 0 auto 20px auto;
+      h2 {
+        font-size: 2rem; // Adjust heading size for mobile
+      }
+
+      .features-container {
+        flex-direction: column; // Stack features vertically
+        text-align: center;
+
+        .feature {
+          max-width: 100%; // Full-width features on small screens
+          margin-bottom: 20px; // Add space between features
+
+          i {
+            font-size: 2.5rem; // Adjust icon size for mobile
+          }
+
+          h3 {
+            font-size: 1.5rem; // Adjust heading size for mobile
+          }
+
+          p {
+            font-size: 1rem; // Adjust paragraph size for mobile
+          }
+        }
       }
     }
   }

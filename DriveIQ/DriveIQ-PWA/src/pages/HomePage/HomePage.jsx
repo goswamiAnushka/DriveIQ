@@ -1,23 +1,28 @@
 import React from 'react';
-import { Link } from 'react-router-dom'; // Add this import statement
+import { Link } from 'react-router-dom';
 import './HomePage.scss';
 import Navbar from '../../components/Navbar/Navbar';
-import PerformanceGraph from '../../components/PerformanceGraph/PerformanceGraph'; // Ensure this import is correct
-
 
 const HomePage = () => {
   return (
     <div className="homepage">
       <Navbar />
+
       {/* Hero Section */}
       <section className="hero">
         <div className="hero-content">
           <h1>Welcome to DriveIQ</h1>
-          <p>Drive smarter, drive safer. Track your driving performance and get rewarded with discounts on your insurance.</p>
+          <p>
+            Drive smarter, drive safer. Track your driving performance and get rewarded
+            with discounts on your insurance.
+          </p>
           <Link to="/register" className="cta-button">Get Started</Link>
         </div>
-        <div className="hero-image">
-          <img src="/assets/hero-image.png" alt="Telematics Driving" />
+        <div className="hero-images-grid">
+
+          <img src="https://www.pngmart.com/files/7/GPS-Tracking-System-Background-PNG.png" alt="Track Your Trips" className="large-image" />
+          <img src="https://images.autoinsurance.com/app/uploads/2022/01/03210505/Auto-Insurance-Discounts-2.png" alt="Get Insurance Discounts" />
+          <img src="https://cdni.iconscout.com/illustration/premium/thumb/insurance-policy-3677842-3087680.png" alt="Monitor Driving Performance" />
         </div>
       </section>
 
@@ -41,12 +46,6 @@ const HomePage = () => {
             <p>Good drivers deserve rewards. The better your score, the more you save on your insurance premiums.</p>
           </div>
         </div>
-      </section>
-
-      {/* Performance Graph */}
-      <section className="performance-overview">
-        <h2>Track Your Performance</h2>
-        <PerformanceGraph />
       </section>
 
       {/* Footer */}

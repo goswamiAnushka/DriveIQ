@@ -1,69 +1,248 @@
 .dashboard-container {
-  padding: 20px;
-  font-family: Arial, sans-serif;
-  background-color: #f8f9fa;
+  padding: 40px;
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(145deg, #2a2e35, #3a3f47);  // Dark neutral gray for a softer background
+  max-width: 1200px;
+  margin: 40px auto;
+  border-radius: 25px;
+  box-shadow: 0px 15px 50px rgba(0, 0, 0, 0.2);
+  transition: all 0.5s ease;
+
+  &:hover {
+    box-shadow: 0px 20px 60px rgba(0, 0, 0, 0.3);
+    transform: translateY(-5px);
+  }
 
   h2 {
     text-align: center;
-    color: #343a40;
+    color: #f5f5f5;  // Lighter color for contrast
+    font-size: 3rem;
+    margin-bottom: 30px;
+    letter-spacing: 1.5px;
+    text-shadow: 0 6px 10px rgba(0, 0, 0, 0.2);
+    transition: color 0.4s ease;
   }
 
   .tracking-controls {
     display: flex;
     justify-content: center;
-    gap: 15px;
-    margin-bottom: 20px;
+    margin-bottom: 30px;
+    gap: 20px;
 
     button {
-      background-color: #007bff;
+      background: linear-gradient(135deg, #ff6b6b, #f65e5e);  // Vibrant, clear red for buttons
       border: none;
       color: white;
-      padding: 10px 20px;
-      font-size: 16px;
+      padding: 14px 40px;
+      font-size: 1.5rem;
       cursor: pointer;
-      border-radius: 5px;
-      transition: background-color 0.3s;
+      border-radius: 50px;
+      transition: all 0.5s ease;
+      box-shadow: 0 8px 20px rgba(255, 107, 107, 0.5), inset 0 4px 8px rgba(255, 255, 255, 0.3);
 
       &:hover {
-        background-color: #0056b3;
+        background: linear-gradient(135deg, #f65e5e, #ff6b6b);
+        box-shadow: 0 10px 30px rgba(255, 107, 107, 0.7);
+        transform: translateY(-6px);
+      }
+
+      &:active {
+        transform: translateY(3px);
+        box-shadow: none;
       }
     }
   }
 
-  .daily-summary {
-    text-align: center;
-    margin-bottom: 20px;
+  .chart-container,
+  .distribution-chart-container {
+    width: 85%;
+    margin: 35px auto;
+    background: #f9f9f9;  // Light neutral background to contrast with data
+    padding: 40px;
+    border-radius: 25px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+    transition: all 0.4s ease;
 
-    h3 {
-      color: #343a40;
+    &:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 14px 45px rgba(0, 0, 0, 0.2);
     }
 
-    p {
-      font-size: 18px;
-      color: #495057;
+    canvas {
+      height: 320px !important;
+      width: 100% !important;
+    }
+  }
+
+  .distribution-chart-container {
+    margin: 50px auto;
+    background: #ffffff;  // Pure white background for high contrast
+    padding: 40px;
+    border-radius: 25px;
+    box-shadow: 0 16px 50px rgba(0, 0, 0, 0.15);
+
+    &:hover {
+      transform: translateY(-10px);
+      box-shadow: 0 18px 55px rgba(0, 0, 0, 0.2);
     }
 
-    .chart-container {
-      width: 80%;
-      margin: 0 auto;
+    canvas {
+      height: 350px !important;
+      width: 100% !important;
     }
   }
 
   .map-section {
-    margin: 20px 0;
+    margin: 70px 0;
+
+    h3 {
+      text-align: center;
+      font-size: 2.6rem;
+      margin-bottom: 25px;
+      color: #f5f5f5;  // Lighter color for dark background
+    }
+
     .map-container {
-      height: 400px;
-      border: 2px solid #343a40;
+      height: 420px;
+      border: none;
+      border-radius: 25px;
+      overflow: hidden;
+      background: linear-gradient(135deg, #3b5998, #8b9dc3);  // Soft, professional blue gradient for the map
+      box-shadow: 0 18px 35px rgba(0, 0, 0, 0.25), inset 0 8px 12px rgba(255, 255, 255, 0.15);
+      transition: all 0.5s ease;
+
+      &:hover {
+        transform: scale(1.05);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+      }
     }
   }
 
-  .error-message {
-    color: red;
-    text-align: center;
-    font-weight: bold;
+  /* Data Section - ensuring visibility of data */
+  .daily-data-section {
+    margin-top: 50px;
+    background: #f1f3f4;  // Light background to contrast with dark text
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    color: #2c3e50;  // Dark text for maximum readability
+
+    h3 {
+      color: #2c3e50;  // Ensure heading contrast
+      font-size: 2.2rem;
+      margin-bottom: 20px;
+    }
+
+    p {
+      font-size: 1.4rem;
+      margin-bottom: 10px;
+    }
+
+    .aggregated-data p {
+      font-size: 1.3rem;
+      color: #34495e;
+    }
   }
 
-  .chart-container {
-    margin-top: 20px;
+  /* Animations */
+  .animate-fade-in {
+    animation: fadeIn 0.8s ease-in-out forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.8s ease-in-out forwards;
+  }
+
+  /* Keyframes */
+  @keyframes fadeIn {
+    0% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideUp {
+    0% {
+      transform: translateY(30px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  /* Mobile Responsive */
+  @media (max-width: 1024px) {
+    .chart-container,
+    .distribution-chart-container {
+      width: 95%;  // Increase width for better mobile experience
+    }
+
+    h2 {
+      font-size: 2.8rem;
+    }
+
+    .tracking-controls button {
+      padding: 14px 35px;
+      font-size: 1.4rem;
+    }
+
+    .map-section .map-container {
+      height: 360px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .chart-container,
+    .distribution-chart-container {
+      width: 95%;
+    }
+
+    h2 {
+      font-size: 2.5rem;
+    }
+
+    .tracking-controls button {
+      padding: 14px 30px;
+      font-size: 1.3rem;
+    }
+
+    .map-section .map-container {
+      height: 340px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .chart-container,
+    .distribution-chart-container {
+      width: 100%;  // Full width on smaller screens
+      padding: 20px;
+    }
+
+    h2 {
+      font-size: 2.2rem;
+    }
+
+    .tracking-controls button {
+      padding: 12px 28px;
+      font-size: 1.2rem;
+    }
+
+    .map-section .map-container {
+      height: 300px;
+    }
+
+    .daily-summary {
+      h3 {
+        font-size: 1.6rem;
+      }
+
+      p {
+        font-size: 1rem;
+      }
+    }
   }
 }

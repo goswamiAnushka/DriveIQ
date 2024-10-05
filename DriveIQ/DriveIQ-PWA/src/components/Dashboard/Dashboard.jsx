@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Line } from 'react-chartjs-2';
+import { Line, Bar } from 'react-chartjs-2'; // Import Bar for distribution chart
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -8,8 +8,8 @@ import { smartGpsTracking, generateSimulatedRoute } from '../../utils/geolocatio
 import BatchProcessing from '../BatchProcessing/BatchProcessing';
 import './Dashboard.scss';
 
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend } from 'chart.js';
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend);
 
 // Define custom marker icon
 const customIcon = new L.Icon({
@@ -119,8 +119,92 @@ const Dashboard = () => {
     }
   };
 
-  const renderChart = (label, data, borderColor) => {
+  // Render the distribution graph for daily features
+  const renderDistributionGraph = () => {
+    if (!dailyData || !dailyData.aggregated_data) return null;
+
+    const labels = ['Speed(m/s)', 'Acceleration(m/s^2)', 'Jerk(m/s^3)', 'Braking Intensity'];
+    const data = [
+      cleanValue(dailyData.aggregated_data['Speed(m/s)']),
+      cleanValue(dailyData.aggregated_data['Acceleration(m/s^2)']),
+      cleanValue(dailyData.aggregated_data['Jerk(m/s^3)']),
+      cleanValue(dailyData.aggregated_data['Braking_Intensity'])
+    ];
+
+    const chartData = {
+      labels,
+      datasets: [
+        {
+          label: 'Daily Feature Distribution',
+          backgroundColor: ['rgba(255, 99, 132, 0.8)', 'rgba(54, 162, 235, 0.8)', 'rgba(75, 192, 192, 0.8)', 'rgba(153, 102, 255, 0.8)'],
+          borderColor: ['rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)', 'rgba(75, 192, 192, 1)', 'rgba(153, 102, 255, 1)'],
+          borderWidth: 2,
+          hoverBackgroundColor: ['rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)', 'rgba(75, 192, 192, 1)', 'rgba(153, 102, 255, 1)'],
+          hoverBorderColor: '#fff',
+          hoverBorderWidth: 3,
+          data: data,
+          barThickness: 50,  // Adjust bar thickness
+        }
+      ]
+    };
+
+    return (
+      <div className="distribution-chart-container">
+        <Bar
+          data={chartData}
+          options={{
+            responsive: true,
+            scales: {
+              y: {
+                beginAtZero: true,
+                grid: {
+                  color: 'rgba(255, 255, 255, 0.1)',
+                },
+                ticks: {
+                  color: '#34495e',
+                },
+              },
+              x: {
+                grid: {
+                  color: 'rgba(255, 255, 255, 0.1)',
+                },
+                ticks: {
+                  color: '#34495e',
+                },
+              },
+            },
+            plugins: {
+              legend: {
+                labels: {
+                  color: '#34495e',
+                  font: {
+                    size: 14,
+                    family: 'Poppins',
+                  },
+                },
+              },
+              tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                titleFont: {
+                  family: 'Poppins',
+                  size: 14,
+                },
+                bodyFont: {
+                  family: 'Poppins',
+                  size: 12,
+                },
+                displayColors: false,
+              },
+            },
+          }}
+        />
+      </div>
+    );
+  };
+
+  const renderChart = (label, data, borderColor, gradientColor) => {
     const chartLabels = data.map((_, index) => `Batch ${index + 1}`);
+  
     return (
       <Line
         data={{
@@ -130,9 +214,61 @@ const Dashboard = () => {
               label: label,
               data: data,
               borderColor: borderColor,
-              fill: false,
+              backgroundColor: gradientColor,  // Gradient background
+              pointBackgroundColor: '#fff',  // White point dots for contrast
+              pointRadius: 5,  // Larger point size for visibility
+              borderWidth: 3,  // Thicker lines for more visibility
+              fill: true,  // Enable fill under the line
+              tension: 0.4,  // Smooth line curves
             },
           ],
+        }}
+        options={{
+          responsive: true,
+          animation: {
+            duration: 2000,  // Smooth 2-second load animation
+          },
+          scales: {
+            x: {
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)',  // Lighter grid lines
+              },
+              ticks: {
+                color: '#34495e',  // Darker text for labels
+              },
+            },
+            y: {
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)',  // Lighter grid lines
+              },
+              ticks: {
+                color: '#34495e',  // Darker text for labels
+              },
+            },
+          },
+          plugins: {
+            legend: {
+              labels: {
+                color: '#34495e',  // Darker legend labels
+                font: {
+                  size: 14,
+                  family: 'Poppins',
+                },
+              },
+            },
+            tooltip: {
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',  // Dark tooltip background
+              titleFont: {
+                family: 'Poppins',
+                size: 14,
+              },
+              bodyFont: {
+                family: 'Poppins',
+                size: 12,
+              },
+              displayColors: false,  // Hide color boxes in tooltip
+            },
+          },
         }}
       />
     );
@@ -148,7 +284,6 @@ const Dashboard = () => {
         </button>
       </div>
 
-      {/* Add a button to manually call processDailyData */}
       <div className="manual-process-controls">
         <button onClick={processDailyData}>Process Daily Data</button>
       </div>
@@ -177,12 +312,15 @@ const Dashboard = () => {
       <div className="chart-section">
         <h3>Driving Feature Fluctuations</h3>
         <div className="chart-container">
-          {renderChart('Speed (m/s)', speedData, 'rgba(75, 192, 192, 1)')}
-          {renderChart('Acceleration (m/s²)', accelerationData, 'rgba(255, 99, 132, 1)')}
-          {renderChart('Jerk (m/s³)', jerkData, 'rgba(54, 162, 235, 1)')}
-          {renderChart('Braking Intensity', brakingData, 'rgba(153, 102, 255, 1)')}
+          {renderChart('Speed (m/s)', speedData, 'rgba(75, 192, 192, 1)', 'rgba(0, 255, 255, 0.2)')}
+          {renderChart('Acceleration (m/s²)', accelerationData, 'rgba(255, 165, 0, 1)', 'rgba(255, 165, 0, 0.2)')}
+          {renderChart('Jerk (m/s³)', jerkData, 'rgba(75, 192, 192, 1)', 'rgba(75, 192, 192, 0.2)')}
+          {renderChart('Braking Intensity', brakingData, 'rgba(255, 99, 132, 1)', 'rgba(255, 99, 132, 0.2)')}
         </div>
       </div>
+
+      {/* Distribution Graph for daily data */}
+      {renderDistributionGraph()}
 
       {/* Display Daily Data */}
       {dailyData ? (

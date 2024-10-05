@@ -231,13 +231,13 @@ def process_daily_data():
             processed_data = process_gps_data(gps_data)
 
             # Ensure all required keys are present
-            processed_data.setdefault('SASV', 0)  # Default SASV to 0 if not present
-            processed_data.setdefault('Speed_Violation', 0)  # Default Speed Violation to 0 if not present
+            processed_data.setdefault('SASV', 0)
+            processed_data.setdefault('Speed_Violation', 0)
 
             # Aggregate metrics from each trip
             total_distance += processed_data['total_distance']
-            total_speed_kmph += processed_data['avg_speed_kmph']  # Speed in km/h for display
-            total_speed_mps += processed_data['avg_speed_mps']  # Speed in m/s for prediction
+            total_speed_kmph += processed_data['avg_speed_kmph']
+            total_speed_mps += processed_data['avg_speed_mps']
             total_acceleration += processed_data['avg_acceleration']
             total_jerk += processed_data['avg_jerk']
             total_heading_change += processed_data['avg_heading_change']
@@ -268,8 +268,8 @@ def process_daily_data():
             'Heading_Change(degrees)': avg_heading_change,
             'Jerk(m/s^3)': avg_jerk,
             'Braking_Intensity': avg_braking_intensity,
-            'SASV': avg_sasv,  # Ensure this field is passed
-            'Speed_Violation': avg_speed_violation  # Ensure this field is passed
+            'SASV': avg_sasv,
+            'Speed_Violation': avg_speed_violation
         }
 
         # Call the ML model to predict driving score and category
@@ -279,7 +279,7 @@ def process_daily_data():
         aggregated_entry = AggregatedData(
             driver_id=driver_id,
             period="daily",
-            date=date.today(),  # Store the current day’s data
+            date=date.today(),
             avg_speed=avg_speed_mps,
             avg_acceleration=avg_acceleration,
             avg_jerk=avg_jerk,
@@ -288,8 +288,8 @@ def process_daily_data():
             avg_sasv=avg_sasv,
             speed_violation_count=avg_speed_violation,
             total_observations=total_entries,
-            driving_score=driving_score,  # Save driving score
-            driving_category=driving_category,  # Save driving category
+            driving_score=driving_score,
+            driving_category=driving_category,
             created_at=datetime.utcnow()
         )
 
@@ -298,13 +298,13 @@ def process_daily_data():
 
         logging.info(f"Daily data processed for driver {driver_id}.")
         return jsonify({
-            "message": "Daily data processed successfully",
-            "driving_score": driving_score,
-            "driving_category": driving_category,
-            "aggregated_data": aggregated_data,
-            "total_trips": len(trips),
-            "total_distance_covered_km": total_distance / 1000
-        }), 200
+    "message": "Daily data processed successfully",
+    "driving_score": driving_score,
+    "driving_category": driving_category,
+    "aggregated_data": aggregated_data,
+    "total_trips": len(trips),
+    "total_distance_covered_km": total_distance / 1000
+}), 200
 
     logging.error(f"No valid trips found for driver {driver_id} to calculate daily metrics.")
     return jsonify({"error": "No valid trips found to calculate daily metrics"}), 400
